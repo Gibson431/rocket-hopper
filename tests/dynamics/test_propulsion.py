@@ -60,7 +60,7 @@ def test_command_above_one_is_clamped_to_full(cfg):
 
 def test_throttle_step_reaches_63_percent_after_one_time_constant(cfg):
     _, traj = run_actuators(cfg, state(thr=0.0), cmd(1.0), cfg.engine.throttle_tau)
-    assert traj[-1, THR] == pytest.approx(1 - np.exp(-1), rel=0.01)
+    assert traj[-1, THR] == pytest.approx(1 - np.exp(-1), rel=0.002)
 
 
 def test_mass_flow_follows_isp(cfg):
@@ -150,3 +150,29 @@ def test_actuator_derivative_is_zero_outside_actuator_slots(cfg):
     o = out(cfg, state(thr=0.5, gim=(0.1, 0.1)), cmd(1.0, (0.05, 0.05)))
     assert o.xdot_act.shape == (N_STATE,)
     assert np.all(o.xdot_act[:13] == 0.0)
+
+
+def test_gimbal_acceleration_is_second_order_with_damping(cfg):
+    e = cfg.engine
+    th, rate, target = 0.03, 0.2, 0.08
+    x = state(thr=0.5, gim=(th, -th), gimr=(rate, -rate))
+    o = out(cfg, x, cmd(0.5, (target, -target)))
+    expected = e.gimbal_wn**2 * (target - th) - 2 * e.gimbal_zeta * e.gimbal_wn * rate
+    assert o.xdot_act[GIMR] == pytest.approx([expected, -expected], rel=1e-12)
+
+
+def test_underdamped_gimbal_step_overshoots_like_a_second_order_system(cfg):
+    e = cfg.engine
+    target = 0.02
+    _, traj = run_actuators(cfg, state(thr=0.5), cmd(0.5, (target, 0.0)), 0.5)
+    zeta = e.gimbal_zeta
+    overshoot = np.exp(-np.pi * zeta / np.sqrt(1 - zeta**2))
+    assert traj[:, GIM][:, 0].max() == pytest.approx(target * (1 + overshoot), rel=0.01)
+
+
+def test_gimbal_stops_at_angle_limit_when_moving_outward(cfg):
+    gmax = cfg.engine.gimbal_max
+    x = state(thr=0.5, gim=(gmax, -gmax), gimr=(0.3, -0.3))
+    o = out(cfg, x, cmd(0.5, (gmax, -gmax)))
+    assert o.xdot_act[GIM] == pytest.approx([0.0, 0.0])
+    assert o.xdot_act[GIMR][0] <= 0.0 and o.xdot_act[GIMR][1] >= 0.0
