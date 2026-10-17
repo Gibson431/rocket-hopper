@@ -11,7 +11,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S00 | Project scaffolding | done | - | 2026-10-17 | uv project (uv_build backend), py>=3.12, empty subpackages, smoke test, CI. Reviewed: PASS (round 2) |
 | S01 | Math, types, config | done | S00 | 2026-10-17 | math3d, types (slices POS/VEL/... and make_state), pydantic config (frozen, extra=forbid), configs/vehicle_default.yaml. Reviewed: PASS (round 2) |
 | S02 | Rigid-body dynamics and RK4 | done | S01 | 2026-10-17 | rigid_body_derivative; rk4_step/integrate(f,x0,t0,t1,dt,callback,renorm=QUAT,record=False) -> (x, traj or None). Reviewed: PASS (round 2) |
-| S03 | Mass model and propulsion | in_progress | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g). S04/S05 add aero/contact via the env hooks. Round 1 review FAIL (damping unpinned, placeholder note); fixing |
+| S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g). S04/S05 add aero/contact via the env hooks. Reviewed: PASS (round 2) |
 | S04 | Environment and aerodynamics | todo | S03 | - | |
 | S05 | Ground contact and events | todo | S04 | - | |
 | S06 | Simulation engine, logging, delays | todo | S05 | - | |
@@ -54,6 +54,7 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 - S01 review suggestions (also: remove duplicate assertion in geometry test): test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it; validate `Command.throttle` / `roll_torque` ranges (decide where in S03/S08).
 - Smoke test: also assert each subpackage has a real `__init__.py` (`__file__ is not None`), since a deleted one still imports as a namespace package.
 - S02 review suggestions: pin the callback's final time == t1 exactly for a non-divisible span; tighten the RK4 exponential-decay test tolerance to ~1e-7; hypothesis test over spans/dts for step count.
+- S03 review suggestions: amend S03 step text (CoM is not monotonic over the full burn); add negative-side and gy-axis cases for the gimbal angle/rate-limit tests; test propellant crossing zero mid-burn; decide where to validate `Command` ranges (propulsion clamps for now).
 
 ## Session log
 
@@ -64,3 +65,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-17, S00, todo -> done: scaffolding created (pyproject, uv.lock, subpackages, smoke test, CI, README). Reviewed: PASS (round 2; round 1 failed on unlogged decisions). Python floor is 3.12; run everything via `uv run`. Next: S01.
 - 2026-10-17, S01, todo -> done: math3d, types, config, default YAML, 65 tests. Reviewed: PASS (round 2; round 1 failed on unlogged decisions). State indices are slices (POS, VEL, QUAT, OMEGA, GIM, GIMR) or ints (PROP, THR). Next: S02.
 - 2026-10-17, S02, todo -> done: rigid_body_derivative, rk4_step, integrate, 25 tests. Reviewed: PASS (round 2; round 1 failed on unlogged decisions). Integrator signature extras (renorm, record) are in Decisions; S03/S06 call `integrate(...)` which returns a `(x, traj)` tuple. Next: S03.
+- 2026-10-17, S03, todo -> done: mass_properties, propulsion (PropulsionOutput), vehicle_derivative with env hooks and `g` kwarg, 133 tests total. Reviewed: PASS (round 2; round 1 failed on unpinned gimbal damping and a placeholder note). CoM dips early in the burn (see Decisions). Next: S04.
