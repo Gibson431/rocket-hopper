@@ -10,7 +10,7 @@ can add code and tests.
 
 ## Deliverables
 
-- `pyproject.toml`: project `hopper`, Python >= 3.11, `src/` layout (hatchling or setuptools),
+- `pyproject.toml`: project `hopper`, Python >= 3.12, `src/` layout (hatchling or setuptools),
   runtime and dev dependencies from CONVENTIONS.md, ruff config (line length 100, rules `E,F,I,UP,B,N`),
   pytest config (`testpaths = ["tests"]`).
 - `uv sync` creates the environment (`uv.lock` committed to the tree).

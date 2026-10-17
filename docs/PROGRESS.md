@@ -8,7 +8,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 
 | ID | Title | Status | Depends | Updated | Notes |
 |----|-------|--------|---------|---------|-------|
-| S00 | Project scaffolding | todo | - | - | |
+| S00 | Project scaffolding | done | - | 2026-10-17 | uv project (uv_build backend), py>=3.12, empty subpackages, smoke test, CI. Reviewed: PASS (round 2) |
 | S01 | Math, types, config | todo | S00 | - | |
 | S02 | Rigid-body dynamics and RK4 | todo | S01 | - | |
 | S03 | Mass model and propulsion | todo | S02 | - | |
@@ -28,13 +28,16 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 Record choices that fix an unspecified detail or deviate from the plan. Newest last.
 Format: `YYYY-MM-DD, step: decision. Reason.`
 
-- (none yet)
+- 2026-10-17, S00: `requires-python` is `>=3.12`, not `>=3.11`. Current numpy (2.5.x) needs 3.12+, so uv cannot resolve for 3.11. CONVENTIONS.md and the S00 step file updated.
+- 2026-10-17, S00: build backend is `uv_build` (default of `uv init --package`), not hatchling/setuptools; the step allows an equivalent.
+- 2026-10-17, S00: ruff `extend-exclude = ["scripts", "docs", "skills"]`. `scripts/next_step.py` must stay untouched and ruff would otherwise lint it and reformat embedded Python in markdown.
+- 2026-10-17, S00: no `.python-version` pin (uv init created one; removed per the step notes). No dependency lacks a 3.14 wheel.
 
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
 
-- (none yet)
+- Smoke test: also assert each subpackage has a real `__init__.py` (`__file__ is not None`), since a deleted one still imports as a namespace package.
 
 ## Session log
 
@@ -42,3 +45,4 @@ Append one entry per session that changes status. Newest last.
 Format: `YYYY-MM-DD, step, status change, what was done, what the next agent should know.`
 
 - 2026-10-17, plan: plan, conventions and step files written. No code yet.
+- 2026-10-17, S00, todo -> done: scaffolding created (pyproject, uv.lock, subpackages, smoke test, CI, README). Reviewed: PASS (round 2; round 1 failed on unlogged decisions). Python floor is 3.12; run everything via `uv run`. Next: S01.

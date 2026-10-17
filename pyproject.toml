@@ -1,0 +1,38 @@
+[project]
+name = "hopper"
+version = "0.1.0"
+description = "6-DOF simulator for a TVC rocket-hopper flight controller"
+authors = [
+    { name = "Gibson431", email = "timmaxgibson@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pandas>=3.0.6",
+    "pyarrow>=26.0.0",
+    "pydantic>=2",
+    "pyyaml>=6.0.3",
+    "scipy>=1.18.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.170.1",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["scripts", "docs", "skills"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "N"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

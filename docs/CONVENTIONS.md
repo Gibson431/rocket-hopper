@@ -5,7 +5,7 @@ If you must change anything here, update this file in the same change and log it
 
 ## Tooling
 
-- Python >= 3.11, `src/` layout, package name `hopper`.
+- Python >= 3.12, `src/` layout, package name `hopper`.
 - **uv manages everything.** `.mise.toml` pins `uv` (run `mise install` if `uv` is missing). Use only:
   `uv add <pkg>` / `uv add --dev <pkg>` to add dependencies (never edit the dependency lists by hand
   or use `pip`), `uv sync` to install, `uv run <cmd>` to run anything (pytest, ruff, scripts),
