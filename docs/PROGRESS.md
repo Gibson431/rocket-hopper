@@ -9,7 +9,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | ID | Title | Status | Depends | Updated | Notes |
 |----|-------|--------|---------|---------|-------|
 | S00 | Project scaffolding | done | - | 2026-10-17 | uv project (uv_build backend), py>=3.12, empty subpackages, smoke test, CI. Reviewed: PASS (round 2) |
-| S01 | Math, types, config | in_progress | S00 | 2026-10-17 | |
+| S01 | Math, types, config | done | S00 | 2026-10-17 | math3d, types (slices POS/VEL/... and make_state), pydantic config (frozen, extra=forbid), configs/vehicle_default.yaml. Reviewed: PASS (round 2) |
 | S02 | Rigid-body dynamics and RK4 | todo | S01 | - | |
 | S03 | Mass model and propulsion | todo | S02 | - | |
 | S04 | Environment and aerodynamics | todo | S03 | - | |
@@ -42,7 +42,7 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 
 Out-of-scope ideas found while working. Do not do these inside another step.
 
-- S01 review suggestions: test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it; validate `Command.throttle` / `roll_torque` ranges (decide where in S03/S08).
+- S01 review suggestions (also: remove duplicate assertion in geometry test): test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it; validate `Command.throttle` / `roll_torque` ranges (decide where in S03/S08).
 - Smoke test: also assert each subpackage has a real `__init__.py` (`__file__ is not None`), since a deleted one still imports as a namespace package.
 
 ## Session log
@@ -52,3 +52,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 
 - 2026-10-17, plan: plan, conventions and step files written. No code yet.
 - 2026-10-17, S00, todo -> done: scaffolding created (pyproject, uv.lock, subpackages, smoke test, CI, README). Reviewed: PASS (round 2; round 1 failed on unlogged decisions). Python floor is 3.12; run everything via `uv run`. Next: S01.
+- 2026-10-17, S01, todo -> done: math3d, types, config, default YAML, 65 tests. Reviewed: PASS (round 2; round 1 failed on unlogged decisions). State indices are slices (POS, VEL, QUAT, OMEGA, GIM, GIMR) or ints (PROP, THR). Next: S02.
