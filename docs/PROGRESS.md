@@ -9,7 +9,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | ID | Title | Status | Depends | Updated | Notes |
 |----|-------|--------|---------|---------|-------|
 | S00 | Project scaffolding | done | - | 2026-10-17 | uv project (uv_build backend), py>=3.12, empty subpackages, smoke test, CI. Reviewed: PASS (round 2) |
-| S01 | Math, types, config | todo | S00 | - | |
+| S01 | Math, types, config | in_progress | S00 | 2026-10-17 | |
 | S02 | Rigid-body dynamics and RK4 | todo | S01 | - | |
 | S03 | Mass model and propulsion | todo | S02 | - | |
 | S04 | Environment and aerodynamics | todo | S03 | - | |

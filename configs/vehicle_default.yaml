@@ -1,0 +1,40 @@
+# Placeholder vehicle: 100 kg total (80 dry + 20 propellant), ~2 m tall.
+# z values are metres above the base (engine gimbal pivot).
+mass:
+  dry_mass: 80.0
+  dry_inertia: [28.0, 28.0, 2.5]  # kg m^2, thin 0.25 m radius cylinder, 2 m long
+  dry_com_z: 0.9
+tank:
+  prop_mass_initial: 20.0
+  bottom_z: 0.3
+  height: 0.8
+  radius: 0.2
+engine:
+  thrust_max: 2500.0
+  thrust_min_frac: 0.4
+  isp: 200.0
+  throttle_tau: 0.1
+  gimbal_max: 0.13962634015954636  # 8 deg
+  gimbal_rate_max: 1.0471975511965976  # 60 deg/s
+  gimbal_wn: 30.0
+  gimbal_zeta: 0.8
+rcs:
+  max_roll_torque: 5.0
+legs:
+  count: 4
+  radius: 0.6  # foot circle
+  length: 0.6  # feet sit this far below the base, clearing the nozzle
+  stiffness: 30000.0
+  damping: 1500.0
+  friction: 0.6
+aero:
+  cd_axial: 0.5
+  cd_lateral: 1.0
+  area_axial: 0.2
+  area_lateral: 0.5
+  cp_z: 1.1
+sensors: {}
+sim:
+  dt: 0.001
+  controller_rate: 100.0
+  max_time: 60.0
