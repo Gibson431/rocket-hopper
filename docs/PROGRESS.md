@@ -10,7 +10,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 |----|-------|--------|---------|---------|-------|
 | S00 | Project scaffolding | done | - | 2026-10-17 | uv project (uv_build backend), py>=3.12, empty subpackages, smoke test, CI. Reviewed: PASS (round 2) |
 | S01 | Math, types, config | done | S00 | 2026-10-17 | math3d, types (slices POS/VEL/... and make_state), pydantic config (frozen, extra=forbid), configs/vehicle_default.yaml. Reviewed: PASS (round 2) |
-| S02 | Rigid-body dynamics and RK4 | todo | S01 | - | |
+| S02 | Rigid-body dynamics and RK4 | in_progress | S01 | 2026-10-17 | |
 | S03 | Mass model and propulsion | todo | S02 | - | |
 | S04 | Environment and aerodynamics | todo | S03 | - | |
 | S05 | Ground contact and events | todo | S04 | - | |
