@@ -106,7 +106,7 @@ and `StateFeedbackController.step_state(est: StateEstimate, t) -> Command`. The 
 
 ## Vehicle config (pydantic, `hopper/config.py`, YAML in `configs/`)
 
-Field groups (names are the contract; exact defaults are placeholders):
+Models are frozen and reject unknown keys. `make_state` renormalises the quaternion and `Command` coerces `gimbal` to a (2,) float array. Field groups (names are the contract; exact defaults are placeholders):
 
 - `mass`: `dry_mass`, `dry_inertia` (3 diag, kg m^2, about dry CoM), `dry_com_z`
 - `tank`: `prop_mass_initial`, `bottom_z`, `height`, `radius` (uniform-density cylinder)

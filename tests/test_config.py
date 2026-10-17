@@ -34,6 +34,11 @@ def test_default_vehicle_geometry_is_self_consistent():
     v = cfg.load_vehicle(DEFAULT)
     # Feet must sit below the engine pivot (z=0) with room for the nozzle.
     assert v.legs.length > 0.3
+    vehicle_top = 2.0
+    assert v.tank.bottom_z + v.tank.height <= vehicle_top
+    assert v.tank.bottom_z - 0.0 > 0.0
+    assert 0.0 < v.mass.dry_com_z < vehicle_top
+    assert v.tank.radius < v.legs.radius
     assert v.tank.bottom_z > 0.0
     assert 0.0 < v.mass.dry_com_z < v.tank.bottom_z + v.tank.height + 1.0
     assert v.engine.gimbal_max == pytest.approx(8 * 3.141592653589793 / 180, abs=1e-3)

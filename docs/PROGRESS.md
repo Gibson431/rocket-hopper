@@ -32,11 +32,17 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-17, S00: build backend is `uv_build` (default of `uv init --package`), not hatchling/setuptools; the step allows an equivalent.
 - 2026-10-17, S00: ruff `extend-exclude = ["scripts", "docs", "skills"]`. `scripts/next_step.py` must stay untouched and ruff would otherwise lint it and reformat embedded Python in markdown.
 - 2026-10-17, S00: no `.python-version` pin (uv init created one; removed per the step notes). No dependency lacks a 3.14 wheel.
+- 2026-10-17, S01: config models use `extra="forbid", frozen=True`. Typos in YAML keys must fail loudly and configs must not be mutated mid-run.
+- 2026-10-17, S01: `SimConfig` defaults are `dt=0.001`, `controller_rate=100` Hz, `max_time=60` s, and a validator rejects `controller_rate > 1/dt`. The step left defaults open; a controller faster than physics is meaningless.
+- 2026-10-17, S01: `make_state` validates shapes (ValueError) and renormalises the quaternion; `Command.__post_init__` coerces `gimbal` to a float64 array of shape (2,). Keeps invalid state out of the integrator.
+- 2026-10-17, S01: `Controller` and `StateFeedbackController` are `@runtime_checkable`, and `StateFeedbackController` extends `Controller`. Lets tests and the sim engine check structurally.
+- 2026-10-17, S01: `rcs.max_roll_torque`, `legs.damping` and `legs.friction` allow 0 (strictly positive elsewhere), so RCS-less or frictionless variants can be configured.
 
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
 
+- S01 review suggestions: test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it; validate `Command.throttle` / `roll_torque` ranges (decide where in S03/S08).
 - Smoke test: also assert each subpackage has a real `__init__.py` (`__file__ is not None`), since a deleted one still imports as a namespace package.
 
 ## Session log
