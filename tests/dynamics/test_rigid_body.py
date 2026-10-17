@@ -126,3 +126,14 @@ def test_integration_converges_at_fourth_order_on_a_nonlinear_tumble():
     assert e1 / e2 > 10
     assert e2 / e3 > 10
     assert e3 < 1e-6
+
+
+def test_non_diagonal_inertia_conserves_inertial_angular_momentum():
+    inertia = np.array([[20.0, 2.0, 1.0], [2.0, 30.0, -3.0], [1.0, -3.0, 8.0]])
+    x0 = tumble_state()
+    x = propagate(x0, 5.0, 1e-3, inertia=inertia)
+
+    def momentum(s):
+        return quat_to_dcm(s[QUAT]) @ (inertia @ s[OMEGA])
+
+    assert momentum(x) == pytest.approx(momentum(x0), abs=1e-9)

@@ -38,6 +38,10 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-17, S01: `Controller` and `StateFeedbackController` are `@runtime_checkable`, and `StateFeedbackController` extends `Controller`. Lets tests and the sim engine check structurally.
 - 2026-10-17, S01: `rcs.max_roll_torque`, `legs.damping` and `legs.friction` allow 0 (strictly positive elsewhere), so RCS-less or frictionless variants can be configured.
 
+- 2026-10-17, S02: `rk4_step(f, t, x, dt, renorm=QUAT)` and `integrate(f, x0, t0, t1, dt, callback=None, renorm=QUAT, record=False)` return `(x_final, traj_or_None)`. `renorm` is the slice to rescale (None disables, for generic non-quaternion states); `record=True` returns a trajectory with the initial state plus one row per step. The step file left both open. `x0` is copied, never mutated.
+- 2026-10-17, S02: `integrate` calls `callback(t, x)` after every step with the post-step time, snapped to exactly `t1` on the final (possibly shortened) step. Step times are `t0 + k*dt`, not accumulated, to avoid drift. A zero-length interval returns `x0` with no steps; `dt <= 0` raises ValueError.
+- 2026-10-17, S02: `rigid_body_derivative` keeps the specified `force_I`/`torque_B` argument names with `# noqa: N803`; ruff's pep8-naming would otherwise reject the frame-suffix convention.
+
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.

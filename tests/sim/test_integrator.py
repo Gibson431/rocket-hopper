@@ -84,3 +84,18 @@ def test_integrate_zero_length_interval_returns_initial_state():
 def test_integrate_rejects_nonpositive_dt():
     with pytest.raises(ValueError):
         integrate(decay, np.array([1.0]), 0.0, 1.0, 0.0, renorm=None)
+
+
+def test_integrate_does_not_mutate_initial_state():
+    x0 = np.array([1.0])
+    integrate(decay, x0, 0.0, 1.0, 0.1, renorm=None)
+    assert x0[0] == 1.0
+
+
+def test_integrate_takes_exactly_three_steps_for_a_divisible_span():
+    seen = []
+    integrate(
+        decay, np.array([1.0]), 0.0, 0.3, 0.1, renorm=None, callback=lambda t, x: seen.append(t)
+    )
+    assert seen == pytest.approx([0.1, 0.2, 0.3])
+    assert seen[-1] == 0.3
