@@ -11,7 +11,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S00 | Project scaffolding | done | - | 2026-10-17 | uv project (uv_build backend), py>=3.12, empty subpackages, smoke test, CI. Reviewed: PASS (round 2) |
 | S01 | Math, types, config | done | S00 | 2026-10-17 | math3d, types (slices POS/VEL/... and make_state), pydantic config (frozen, extra=forbid), configs/vehicle_default.yaml. Reviewed: PASS (round 2) |
 | S02 | Rigid-body dynamics and RK4 | done | S01 | 2026-10-17 | rigid_body_derivative; rk4_step/integrate(f,x0,t0,t1,dt,callback,renorm=QUAT,record=False) -> (x, traj or None). Reviewed: PASS (round 2) |
-| S03 | Mass model and propulsion | todo | S02 | - | |
+| S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g). S04/S05 add aero/contact via the env hooks. Reviewed: PASS (round N) |
 | S04 | Environment and aerodynamics | todo | S03 | - | |
 | S05 | Ground contact and events | todo | S04 | - | |
 | S06 | Simulation engine, logging, delays | todo | S05 | - | |
@@ -41,6 +41,11 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-17, S02: `rk4_step(f, t, x, dt, renorm=QUAT)` and `integrate(f, x0, t0, t1, dt, callback=None, renorm=QUAT, record=False)` return `(x_final, traj_or_None)`. `renorm` is the slice to rescale (None disables, for generic non-quaternion states); `record=True` returns a trajectory with the initial state plus one row per step. The step file left both open. `x0` is copied, never mutated.
 - 2026-10-17, S02: `integrate` calls `callback(t, x)` after every step with the post-step time, snapped to exactly `t1` on the final (possibly shortened) step. Step times are `t0 + k*dt`, not accumulated, to avoid drift. A zero-length interval returns `x0` with no steps; `dt <= 0` raises ValueError.
 - 2026-10-17, S02: `rigid_body_derivative` keeps the specified `force_I`/`torque_B` argument names with `# noqa: N803`; ruff's pep8-naming would otherwise reject the frame-suffix convention.
+
+- 2026-10-17, S03: `propulsion` returns a `PropulsionOutput(force_B, torque_B, xdot_act)` dataclass; `vehicle_derivative` takes an extra keyword `g=9.80665` (gravity-off for tests). The step left both open.
+- 2026-10-17, S03: the CoM is not monotonic over the whole burn for the default vehicle: it dips from 0.860 m to ~0.853 m (at ~13.9 kg) and then rises to the dry 0.9 m, because the filled column's centre falls faster than the mass shrinks. The step's "moves monotonically" test is therefore applied to the late burn only (<= 13 kg), plus a test pinning the early dip.
+- 2026-10-17, S03: gimbal limits. The angle derivative uses the rate clamped to +/- `gimbal_rate_max` (so angle changes obey the rate limit exactly) and is zero at the angle limit when moving outward; the thrust direction clips the angle to +/- `gimbal_max`. The raw angle state may overshoot the limit by at most one step of rate*dt under RK4. The rate state itself is not clamped, only its outward acceleration is zeroed at the limit.
+- 2026-10-17, S03: `tests/conftest.py` provides a shared `cfg` fixture (default vehicle YAML).
 
 ## Backlog
 
