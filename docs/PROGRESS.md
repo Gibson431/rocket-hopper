@@ -16,7 +16,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S05 | Ground contact and events | done | S04 | 2026-10-18 | contact_loads -> ContactOutput (incl. base_strike); vehicle_derivative(..., info=None) always applies contact; sim/events.py (Outcome, EventState, check_events, EventMonitor); thresholds in SimConfig. S06 must run EventMonitor each step. Reviewed: PASS (round 1) |
 | S06 | Simulation engine, logging, delays | done | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Reviewed: PASS (round 1) |
 | S07 | Sensor models | done | S06 | 2026-10-18 | SensorsConfig (imu/baro/gps/lidar), sensors/{imu,baro,gps,lidar,suite}.py, `SensorSuite.sample/needs_info`, `info["specific_force_B"]`; `Simulation(perfect_state=False)` calls `controller.step(SensorData, t)`. Reviewed: PASS (round 1) |
-| S08 | Control interface and attitude controller | in_progress | S06 | 2026-10-19 | AttitudeController/AttitudeGains/AttitudeOutput, ControlParams, scenario_glue.control_params_from_config, AttitudeHoldController, scripts/tune_attitude.py |
+| S08 | Control interface and attitude controller | done | S06 | 2026-10-19 | AttitudeController/AttitudeGains/AttitudeOutput, ControlParams, scenario_glue.control_params_from_config, AttitudeHoldController (base for S09), scripts/tune_attitude.py. PD has no integral: aero torque offset grows with speed. Reviewed: PASS (round 2) |
 | S09 | Position cascade and mission state machine | todo | S08 | - | |
 | S10 | State estimator (EKF) | todo | S07, S09 | - | |
 | S11 | Scenarios, faults, Monte Carlo | todo | S09 | - | |
@@ -92,6 +92,7 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 
 - S07 review suggestions: `_Channel` queue stores `sample_t` but nothing reads it (internal, unused); `specific_force_B` includes `env_force_I` hooks (mention in vehicle docstring); one extra derivative call per IMU tick costs speed.
 - Backlog-hardening review suggestions: strengthen `test_early_exit_agrees_with_full_computation_near_the_bound` (tilted vehicle just below `reach` with a foot touching must give nonzero loads); test `-inf` and NaN in gimbal[1] for `Command`.
+- S08 review suggestions: add ControlParams/control_params_from_config/AttitudeHoldController pointers to CONVENTIONS.md when S09 builds on them; direct per-axis overshoot check in the 10 degree test; tighten the 60 degree saturation test; allowlist-style import boundary test (only hopper.types, hopper.math3d); S09 needs integral or aero compensation for the attitude offset.
 
 ## Session log
 
@@ -108,3 +109,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-18, S06, in_progress: simulation engine, logger, OpenLoopController, run_scenario.py, 29 new tests (223 total). Speed ~1300 steps/s. Reviewed: PASS (round 1). Status -> done. Next: S07 (use the `_build_controller_input` seam in `Simulation`).
 - 2026-10-18, S07, todo -> done: sensor models, suite, engine sensor path, accel/gyro/baro/GPS/lidar tests (~26 new). Reviewed: PASS (round 1). Next: S08 (controller) or S12; S10 needs S07 + S09. Controllers get `SensorData` via `step()` when `perfect_state=False`.
 - 2026-10-18, backlog hardening (no step): finite `Command` check, `contact_loads` early exit, smoke/CPU-time tests, docs. Reviewed: PASS (round 1). 261 tests.
+- 2026-10-19, S08, todo -> done: attitude PD controller (gimbal + RCS roll), ControlParams, scenario_glue bridge, AttitudeHoldController, tune script, import-boundary test; 299 tests. Reviewed: PASS (round 2; round 1 failed on untested slew limit/CoM scheduling and unlogged decisions). Next: S09 builds on AttitudeHoldController/AttitudeController.
