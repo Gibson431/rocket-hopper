@@ -199,3 +199,22 @@ def test_thrust_above_weight_lifts_off_and_contact_goes_to_zero(cfg):
     assert not loads(cfg, x).any_contact
     assert x[VEL][2] > 5.0
     assert x[PROP] < 20.0
+
+
+def test_far_above_ground_skips_to_empty_contact(cfg):
+    x = standing(cfg, lift=50.0)
+    out = loads(cfg, x)
+    assert not out.any_contact and not out.base_strike
+    assert np.all(out.force_I == 0.0) and np.all(out.torque_B == 0.0)
+    assert np.all(out.foot_forces == 0.0) and out.foot_forces.shape == (cfg.legs.count,)
+
+
+def test_early_exit_agrees_with_full_computation_near_the_bound(cfg):
+    # Just above the conservative bound the full path must also give zero loads.
+    mp = mass_properties(20.0, cfg)
+    reach = np.hypot(cfg.legs.radius, mp.com_z + cfg.legs.length)
+    for tilt in (0.0, 0.5, 1.5):
+        q = quat_from_axis_angle(np.array([1.0, 0.0, 0.0]), tilt)
+        x = make_state([0, 0, reach + 1e-6], (0, 0, 0), q, (0, 0, 0), 20.0, 0.0)
+        out = loads(cfg, x)
+        assert not out.any_contact and not out.base_strike

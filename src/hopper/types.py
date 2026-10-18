@@ -57,6 +57,13 @@ class Command:
     def __post_init__(self) -> None:
         # Frozen dataclass: bypass the frozen __setattr__ to store the coerced array.
         object.__setattr__(self, "gimbal", _vec("gimbal", self.gimbal, 2))
+        # A NaN would silently poison the whole integration; ranges are clamped by propulsion.
+        if not (
+            np.isfinite(self.throttle)
+            and np.isfinite(self.roll_torque)
+            and np.all(np.isfinite(self.gimbal))
+        ):
+            raise ValueError("Command fields must be finite")
 
 
 @dataclass(frozen=True)

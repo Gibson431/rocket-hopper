@@ -100,3 +100,16 @@ def test_controller_protocols_are_structurally_satisfied():
     assert isinstance(Dummy(), ht.Controller)
     assert isinstance(Dummy(), ht.StateFeedbackController)
     assert not isinstance(object(), ht.Controller)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"throttle": float("nan"), "gimbal": [0.0, 0.0], "roll_torque": 0.0},
+        {"throttle": 0.5, "gimbal": [float("inf"), 0.0], "roll_torque": 0.0},
+        {"throttle": 0.5, "gimbal": [0.0, 0.0], "roll_torque": float("nan")},
+    ],
+)
+def test_command_rejects_non_finite_values(kwargs):
+    with pytest.raises(ValueError):
+        ht.Command(**kwargs)

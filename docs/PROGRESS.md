@@ -69,19 +69,19 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-18, S07: `SensorSuite.sample(t, x, info=None)` must be called every physics step and returns only what was delivered in that call; the engine keeps the newest sample per field until the next controller call. `needs_info(t)` tells the engine when the IMU is due so it evaluates `vehicle_derivative(..., info=)` (one extra derivative call) only then. `info["specific_force_B"]` is added to `vehicle_derivative`; gravity is now added after it is computed.
 - 2026-10-18, S07: baro and lidar measure from CoM height (z of the CoM), not the base; lidar mount offset `mount_b` defaults to the CoM. GPS outage windows and dropouts are in sample time; the GPS rng always draws so streams don't depend on dropouts. Sensor rng children come from `rng.spawn(4)` in fixed order imu, baro, gps, lidar.
 - 2026-10-18, S07: removed the S06 test that `perfect_state=False` raises NotImplementedError; `test_default_yaml_sensors_match_model_defaults` replaced the empty-placeholder config test.
+- 2026-10-18, backlog cleanup: `Command` rejects non-finite fields (range clamping stays in `propulsion`); `contact_loads` returns an empty result when z > hypot(leg radius, com_z + leg length) (exact, not an approximation); speed test uses CPU time.
 
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
 
-- S01 review suggestions (also: remove duplicate assertion in geometry test): test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it; validate `Command.throttle` / `roll_torque` ranges (decide where in S03/S08).
-- Smoke test: also assert each subpackage has a real `__init__.py` (`__file__ is not None`), since a deleted one still imports as a namespace package.
+- S01 review suggestions (also: remove duplicate assertion in geometry test): test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it.
 - S02 review suggestions: pin the callback's final time == t1 exactly for a non-divisible span; tighten the RK4 exponential-decay test tolerance to ~1e-7; hypothesis test over spans/dts for step count.
 - S03 review suggestions: amend S03 step text (CoM is not monotonic over the full burn); add negative-side and gy-axis cases for the gimbal angle/rate-limit tests; test propellant crossing zero mid-burn; decide where to validate `Command` ranges (propulsion clamps for now).
 - S04 review suggestions: test simultaneous vehicle motion plus wind in `aero_loads`; check `Wind.advance` stays a no-op with sigma 0 across a reset.; add a direct hand-computed mixed axial+lateral `aero_loads` test and a tilted-vehicle cross-flow torque test.
-- S05 review suggestions: confirm the V_EPS = 0.05 deviation is acceptable; mention the SimConfig thresholds and `info` hook in CONVENTIONS.md; implement `FLAMEOUT_FALLING` detection when its rule is defined.
-- S06 speed: ~1300 steps/s is slow for Monte Carlo. Options: scalar/float fast paths in `contact_loads`, `propulsion`, `rigid_body_derivative`; skip contact when well above the ground; reuse the k1 evaluation for events.
-- S06 review suggestions: speed test (<10 s) may be flaky on a loaded machine; move the `integrate` import in `test_command_is_constant_across_rk4_stages` to module level; test that `_build_controller_input` is called once per controller call.
+- S05 review suggestions: confirm the V_EPS = 0.05 deviation is acceptable; implement `FLAMEOUT_FALLING` detection when its rule is defined.
+- S06 speed: still slow for Monte Carlo. Done: `contact_loads` early exit above the vehicle's reach. Remaining: scalar/float fast paths in `propulsion`, `rigid_body_derivative`; reuse the k1 evaluation for events.
+- S06 review suggestions: move the `integrate` import in `test_command_is_constant_across_rk4_stages` to module level; test that `_build_controller_input` is called once per controller call.
 
 - S07 review suggestions: `_Channel` queue stores `sample_t` but nothing reads it (internal, unused); `specific_force_B` includes `env_force_I` hooks (mention in vehicle docstring); one extra derivative call per IMU tick costs speed.
 

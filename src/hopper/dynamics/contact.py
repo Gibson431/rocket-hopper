@@ -32,6 +32,11 @@ def contact_loads(x: np.ndarray, mp: MassProperties, cfg: LegsConfig) -> Contact
     With penetration `d = -z_foot > 0`, the normal force is `max(0, k d - c v_z)` (no tension).
     Friction opposes foot slip with magnitude `mu N tanh(|v_t| / V_EPS)`, V_EPS = 0.05 m/s.
     """
+    # Every foot and the base lie within `reach` of the CoM, so above that height nothing can touch.
+    reach = np.hypot(cfg.radius, mp.com_z + cfg.length)
+    if x[POS][2] > reach:
+        return ContactOutput(np.zeros(3), np.zeros(3), np.zeros(cfg.count), False, False)
+
     rot = quat_to_dcm(x[QUAT])
     angles = 2 * np.pi * np.arange(cfg.count) / cfg.count
     p = np.stack(
