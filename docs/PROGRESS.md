@@ -12,7 +12,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S01 | Math, types, config | done | S00 | 2026-10-17 | math3d, types (slices POS/VEL/... and make_state), pydantic config (frozen, extra=forbid), configs/vehicle_default.yaml. Reviewed: PASS (round 2) |
 | S02 | Rigid-body dynamics and RK4 | done | S01 | 2026-10-17 | rigid_body_derivative; rk4_step/integrate(f,x0,t0,t1,dt,callback,renorm=QUAT,record=False) -> (x, traj or None). Reviewed: PASS (round 2) |
 | S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g). S04/S05 add aero/contact via the env hooks. Reviewed: PASS (round 2) |
-| S04 | Environment and aerodynamics | todo | S03 | - | |
+| S04 | Environment and aerodynamics | in_progress | S03 | 2026-10-18 | awaiting review |
 | S05 | Ground contact and events | todo | S04 | - | |
 | S06 | Simulation engine, logging, delays | todo | S05 | - | |
 | S07 | Sensor models | todo | S06 | - | |
