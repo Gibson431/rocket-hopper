@@ -131,7 +131,7 @@ recorded in logs.
 ## Logging schema (S06)
 
 One row per physics step (or decimated): `t`, the 19 state entries, true total mass, `cmd_*`, thrust
-(N), `contact_force`, `event`. Parquet via pandas. Column names are in `hopper/analysis/logger.py`.
+(N), `contact_force`, `event`. Parquet via pandas. Column names are in `hopper/analysis/logger.py`. `event` is `""` except on the terminal row (outcome name); seed and config hash are in `df.attrs` and the parquet metadata.
 
 ## Testing conventions
 

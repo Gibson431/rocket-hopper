@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from hopper.math3d import quat_derivative
+from hopper.math3d import cross, quat_derivative
 from hopper.types import N_STATE, OMEGA, POS, QUAT, VEL
 
 
@@ -24,5 +24,5 @@ def rigid_body_derivative(
     xd[POS] = x[VEL]
     xd[VEL] = force_I / mass
     xd[QUAT] = quat_derivative(x[QUAT], omega)
-    xd[OMEGA] = np.linalg.solve(inertia, torque_B - np.cross(omega, inertia @ omega))
+    xd[OMEGA] = np.linalg.solve(inertia, torque_B - cross(omega, inertia @ omega))
     return xd

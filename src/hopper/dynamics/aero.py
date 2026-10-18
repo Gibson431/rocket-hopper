@@ -4,7 +4,7 @@ import numpy as np
 
 from hopper.config import AeroConfig
 from hopper.dynamics.mass_model import MassProperties
-from hopper.math3d import quat_rotate, quat_rotate_inv
+from hopper.math3d import cross, quat_rotate, quat_rotate_inv
 
 
 def aero_loads(
@@ -32,4 +32,4 @@ def aero_loads(
         ]
     )
     r = np.array([0.0, 0.0, cfg.cp_z - mp.com_z])
-    return quat_rotate(quat, force_b), np.cross(r, force_b)
+    return quat_rotate(quat, force_b), cross(r, force_b)
