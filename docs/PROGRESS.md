@@ -13,7 +13,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S02 | Rigid-body dynamics and RK4 | done | S01 | 2026-10-17 | rigid_body_derivative; rk4_step/integrate(f,x0,t0,t1,dt,callback,renorm=QUAT,record=False) -> (x, traj or None). Reviewed: PASS (round 2) |
 | S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g); S04 replaced `g` with `env` (see S04 row). S05 adds contact via the env_force_I/env_torque_B hooks. Reviewed: PASS (round 2) |
 | S04 | Environment and aerodynamics | done | S03 | 2026-10-18 | environment (gravity, ISA `atmosphere`->Atmosphere, pressure_to_altitude, Wind, Environment), aero_loads, `vehicle_derivative(t,x,cmd,cfg,env=None,env_force_I,env_torque_B)`. Sim loop (S06) must call `env.wind.advance(dt)` per step. Reviewed: PASS (round 2) |
-| S05 | Ground contact and events | todo | S04 | - | |
+| S05 | Ground contact and events | in_progress | S04 | 2026-10-18 | awaiting review |
 | S06 | Simulation engine, logging, delays | todo | S05 | - | |
 | S07 | Sensor models | todo | S06 | - | |
 | S08 | Control interface and attitude controller | todo | S06 | - | |
@@ -52,6 +52,12 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-18, S04: `atmosphere` returns an `Atmosphere` NamedTuple (density, temperature, pressure, speed_of_sound); it still unpacks as the specified 4-tuple. Altitude is clamped to 0-11 km.
 - 2026-10-18, S04: `Wind(mean_I, gust_sigma, gust_tau, rng)` plus `reset(seed)`, which replaces the rng with `default_rng(seed)` and zeroes the gust. `advance(dt)` uses the exact discretisation (valid for any dt), so there is no fixed internal step. Gust starts at zero. `Wind.none()` uses a dummy seeded rng.
 - 2026-10-18, S04: the terminal-velocity test raises `cd_axial` to 5 so the vehicle settles within 30 s of simulated fall.
+
+- 2026-10-18, S05: friction regularisation width is `V_EPS = 0.05 m/s`, not the specified 0.01. With 0.01, yaw friction (slope ~7000 /s on I_zz ~ 3 kg m^2) is unstable under RK4 at dt = 1 ms and leaves a permanent 0.024 rad/s yaw limit cycle. 0.05 is stable at the default dt; no contact substep is needed. Default stiffness/damping (30000 N/m, 1500 N s/m) are stable and unchanged.
+- 2026-10-18, S05: `vehicle_derivative(..., info=None)`: contact is always applied inside it (not via the env hooks, which stay for other loads); `info["contact"]` receives the `ContactOutput`. `ContactOutput` also carries `base_strike`.
+- 2026-10-18, S05: outcome thresholds are `SimConfig` fields: `v_crash`, `crash_tilt`, `tipover_tilt`, `land_speed`, `land_tilt`, `land_rate`, `land_hold`, `max_range` (500 m), `max_alt` (200 m); angles in rad. The step left `max_range`/`max_alt` defaults open.
+- 2026-10-18, S05: `check_events(t, x, contact, cfg, prev_state: EventState)` mutates `prev_state`; `EventMonitor(cfg).update(t, x, contact)` wraps it. Touchdown crash speed is the vertical speed from the call *before* first contact (the post-contact speed is already cushioned). `TIMEOUT` is reported when `t >= sim.max_time`. `FLAMEOUT_FALLING` exists in `Outcome` but is not detected (the step does not define it); S06 or later can add it.
+- 2026-10-18, S05: `tipover` uses `tilt > 60 deg` while any foot is in contact; `CRASHED` precedes `TIPPED_OVER`, which precedes `OUT_OF_BOUNDS`, `LANDED`, `TIMEOUT` when several hold at once.
 
 ## Backlog
 

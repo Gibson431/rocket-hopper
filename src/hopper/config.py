@@ -1,6 +1,6 @@
 """Vehicle configuration models and YAML loading (see docs/CONVENTIONS.md)."""
 
-from math import pi
+from math import pi, radians
 from pathlib import Path
 from typing import Annotated, Self
 
@@ -68,6 +68,16 @@ class SimConfig(_Model):
     dt: Pos = 0.001
     controller_rate: Pos = 100.0
     max_time: Pos = 60.0
+    # Outcome thresholds (see hopper.sim.events). Angles in rad.
+    v_crash: Pos = 3.0  # vertical speed at first touchdown
+    crash_tilt: Pos = radians(30.0)  # tilt at first touchdown
+    tipover_tilt: Pos = radians(60.0)  # tilt while in contact
+    land_speed: Pos = 0.2
+    land_tilt: Pos = radians(10.0)
+    land_rate: Pos = 0.2  # rad/s
+    land_hold: Pos = 1.0  # s all landing conditions must hold
+    max_range: Pos = 500.0  # horizontal distance from the origin
+    max_alt: Pos = 200.0
 
     @model_validator(mode="after")
     def _controller_not_faster_than_physics(self) -> Self:
