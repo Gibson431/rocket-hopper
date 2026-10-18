@@ -95,3 +95,13 @@ def test_environment_default_has_no_wind_and_gravity_on():
     env = Environment.default()
     assert env.gravity_enabled
     assert np.array_equal(env.wind.velocity(0.0, np.zeros(3)), np.zeros(3))
+
+
+@pytest.mark.parametrize("h,p", [(5000.0, 54019.9), (11000.0, 22632.1)])
+def test_isa_pressure_matches_published_tables_tightly(h, p):
+    assert atmosphere(h).pressure == pytest.approx(p, rel=2e-4)
+
+
+def test_atmosphere_clamps_outside_troposphere():
+    assert atmosphere(-50.0) == atmosphere(0.0)
+    assert atmosphere(20000.0) == atmosphere(11000.0)

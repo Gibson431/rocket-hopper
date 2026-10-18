@@ -98,6 +98,7 @@ def test_gravity_disabled_flag_removes_gravity(cfg):
 def test_terminal_velocity_matches_drag_balance(cfg):
     from hopper.dynamics.environment import atmosphere
 
+    # Large axial Cd so the vehicle settles to terminal speed within 30 s.
     big = cfg.model_copy(update={"aero": cfg.aero.model_copy(update={"cd_axial": 5.0})})
     x0 = make_state([0, 0, 3000.0], [0, 0, 0], None, [0, 0, 0], 0.0)
     c = cmd(0.0)
@@ -119,3 +120,16 @@ def test_crosswind_pushes_hovering_vehicle_downwind(cfg):
     assert xd[VEL][0] > 0
     assert xd[VEL][1] == pytest.approx(0, abs=1e-12)
     assert xd[VEL][2] == pytest.approx(0, abs=1e-9)  # lateral flow only, no axial drag
+
+
+def test_crosswind_weathercock_torque_reaches_angular_acceleration(cfg):
+    low = cfg.model_copy(update={"engine": cfg.engine.model_copy(update={"thrust_min_frac": 0.1})})
+    frac = mass_properties(20.0, low).mass * G0 / low.engine.thrust_max
+    env = Environment(wind=Wind(np.array([10.0, 0, 0]), 0.0, 1.0, np.random.default_rng(0)))
+    xd = vehicle_derivative(0.0, upright(thr=frac), cmd(frac), low, env)
+    mp = mass_properties(20.0, low)
+    a = low.aero
+    fx = 0.5 * 1.225 * a.cd_lateral * a.area_lateral * 10.0**2  # sea level, wind toward +x
+    expected = (a.cp_z - mp.com_z) * fx / mp.inertia[1, 1]
+    assert xd[OMEGA][1] == pytest.approx(expected, rel=1e-3)
+    assert xd[OMEGA][[0, 2]] == pytest.approx([0, 0], abs=1e-9)
