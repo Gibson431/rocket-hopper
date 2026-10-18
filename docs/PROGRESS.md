@@ -11,8 +11,8 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S00 | Project scaffolding | done | - | 2026-10-17 | uv project (uv_build backend), py>=3.12, empty subpackages, smoke test, CI. Reviewed: PASS (round 2) |
 | S01 | Math, types, config | done | S00 | 2026-10-17 | math3d, types (slices POS/VEL/... and make_state), pydantic config (frozen, extra=forbid), configs/vehicle_default.yaml. Reviewed: PASS (round 2) |
 | S02 | Rigid-body dynamics and RK4 | done | S01 | 2026-10-17 | rigid_body_derivative; rk4_step/integrate(f,x0,t0,t1,dt,callback,renorm=QUAT,record=False) -> (x, traj or None). Reviewed: PASS (round 2) |
-| S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g). S04/S05 add aero/contact via the env hooks. Reviewed: PASS (round 2) |
-| S04 | Environment and aerodynamics | todo | S03 | - | |
+| S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g); S04 replaced `g` with `env` (see S04 row). S05 adds contact via the env_force_I/env_torque_B hooks. Reviewed: PASS (round 2) |
+| S04 | Environment and aerodynamics | done | S03 | 2026-10-18 | environment (gravity, ISA `atmosphere`->Atmosphere, pressure_to_altitude, Wind, Environment), aero_loads, `vehicle_derivative(t,x,cmd,cfg,env=None,env_force_I,env_torque_B)`. Sim loop (S06) must call `env.wind.advance(dt)` per step. Reviewed: PASS (round 2) |
 | S05 | Ground contact and events | todo | S04 | - | |
 | S06 | Simulation engine, logging, delays | todo | S05 | - | |
 | S07 | Sensor models | todo | S06 | - | |
@@ -47,6 +47,12 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-17, S03: gimbal limits. The angle derivative uses the rate clamped to +/- `gimbal_rate_max` (so angle changes obey the rate limit exactly) and is zero at the angle limit when moving outward; the thrust direction clips the angle to +/- `gimbal_max`. The raw angle state may overshoot the limit by at most one step of rate*dt under RK4. The rate state itself is not clamped, only its outward acceleration is zeroed at the limit.
 - 2026-10-17, S03: `tests/conftest.py` provides a shared `cfg` fixture (default vehicle YAML).
 
+- 2026-10-18, S04: `vehicle_derivative(t, x, cmd, cfg, env=None, env_force_I=None, env_torque_B=None)`. `env=None` means `Environment.default()`; the S03 `g` keyword is removed (gravity comes from `environment.gravity`, disabled by `Environment(gravity_enabled=False)`). The contact hooks stay for S05.
+- 2026-10-18, S04: `Environment` has an extra `aero_enabled` flag (default True). Rocket-equation tests need drag off, since drag at ~100+ m/s breaks the 1e-3 delta-v match.
+- 2026-10-18, S04: `atmosphere` returns an `Atmosphere` NamedTuple (density, temperature, pressure, speed_of_sound); it still unpacks as the specified 4-tuple. Altitude is clamped to 0-11 km.
+- 2026-10-18, S04: `Wind(mean_I, gust_sigma, gust_tau, rng)` plus `reset(seed)`, which replaces the rng with `default_rng(seed)` and zeroes the gust. `advance(dt)` uses the exact discretisation (valid for any dt), so there is no fixed internal step. Gust starts at zero. `Wind.none()` uses a dummy seeded rng.
+- 2026-10-18, S04: the terminal-velocity test raises `cd_axial` to 5 so the vehicle settles within 30 s of simulated fall.
+
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
@@ -55,6 +61,7 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 - Smoke test: also assert each subpackage has a real `__init__.py` (`__file__ is not None`), since a deleted one still imports as a namespace package.
 - S02 review suggestions: pin the callback's final time == t1 exactly for a non-divisible span; tighten the RK4 exponential-decay test tolerance to ~1e-7; hypothesis test over spans/dts for step count.
 - S03 review suggestions: amend S03 step text (CoM is not monotonic over the full burn); add negative-side and gy-axis cases for the gimbal angle/rate-limit tests; test propellant crossing zero mid-burn; decide where to validate `Command` ranges (propulsion clamps for now).
+- S04 review suggestions: test simultaneous vehicle motion plus wind in `aero_loads`; check `Wind.advance` stays a no-op with sigma 0 across a reset.; add a direct hand-computed mixed axial+lateral `aero_loads` test and a tilted-vehicle cross-flow torque test.
 
 ## Session log
 
@@ -66,3 +73,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-17, S01, todo -> done: math3d, types, config, default YAML, 65 tests. Reviewed: PASS (round 2; round 1 failed on unlogged decisions). State indices are slices (POS, VEL, QUAT, OMEGA, GIM, GIMR) or ints (PROP, THR). Next: S02.
 - 2026-10-17, S02, todo -> done: rigid_body_derivative, rk4_step, integrate, 25 tests. Reviewed: PASS (round 2; round 1 failed on unlogged decisions). Integrator signature extras (renorm, record) are in Decisions; S03/S06 call `integrate(...)` which returns a `(x, traj)` tuple. Next: S03.
 - 2026-10-17, S03, todo -> done: mass_properties, propulsion (PropulsionOutput), vehicle_derivative with env hooks and `g` kwarg, 133 tests total. Reviewed: PASS (round 2; round 1 failed on unpinned gimbal damping and a placeholder note). CoM dips early in the burn (see Decisions). Next: S04.
+- 2026-10-18, S04, todo -> done: environment.py, aero.py, vehicle_derivative takes `env`; 164 tests. Reviewed: PASS (round 2; round 1 failed on unpinned aero torque in vehicle_derivative and unlogged decisions). Next: S05.

@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
 from hopper.dynamics.vehicle import vehicle_derivative
 from hopper.math3d import quat_from_axis_angle
@@ -8,6 +9,7 @@ from hopper.sim.integrator import integrate
 from hopper.types import OMEGA, PROP, VEL, Command, make_state
 
 G0 = 9.80665
+VACUUM = Environment(gravity_enabled=False, aero_enabled=False)
 
 
 def cmd(throttle=0.0, gimbal=(0.0, 0.0), roll=0.0):
@@ -35,7 +37,7 @@ def test_hover_when_thrust_equals_weight(cfg):
 def test_tilted_thrust_rotates_into_inertial_frame(cfg):
     q = quat_from_axis_angle([0, 1, 0], np.pi / 2)  # z_B -> +x_I
     x = make_state([0, 0, 10], [0, 0, 0], q, [0, 0, 0], 20.0, thr=1.0)
-    xd = vehicle_derivative(0.0, x, cmd(1.0), cfg, g=0.0)
+    xd = vehicle_derivative(0.0, x, cmd(1.0), cfg, VACUUM)
     mass = mass_properties(20.0, cfg).mass
     assert xd[VEL] == pytest.approx([cfg.engine.thrust_max / mass, 0, 0], abs=1e-9)
 
@@ -77,7 +79,7 @@ def test_rocket_equation_delta_v_with_no_gravity(cfg):
     c = cmd(throttle)
 
     def f(t, x):
-        return vehicle_derivative(t, x, c, cfg, g=0.0)
+        return vehicle_derivative(t, x, c, cfg, VACUUM)
 
     x, _ = integrate(f, x0, 0.0, 10.0, 1e-3)
     m1 = mass_properties(x[PROP], cfg).mass
@@ -85,3 +87,49 @@ def test_rocket_equation_delta_v_with_no_gravity(cfg):
     expected = cfg.engine.isp * G0 * np.log(m0 / m1)
     assert x[VEL][2] == pytest.approx(expected, rel=1e-3)
     assert x[VEL][:2] == pytest.approx([0, 0], abs=1e-9)
+
+
+def test_gravity_disabled_flag_removes_gravity(cfg):
+    env = Environment(gravity_enabled=False)
+    xd = vehicle_derivative(0.0, upright(thr=0.0), cmd(0.0), cfg, env)
+    assert xd[VEL] == pytest.approx([0, 0, 0], abs=1e-12)
+
+
+def test_terminal_velocity_matches_drag_balance(cfg):
+    from hopper.dynamics.environment import atmosphere
+
+    # Large axial Cd so the vehicle settles to terminal speed within 30 s.
+    big = cfg.model_copy(update={"aero": cfg.aero.model_copy(update={"cd_axial": 5.0})})
+    x0 = make_state([0, 0, 3000.0], [0, 0, 0], None, [0, 0, 0], 0.0)
+    c = cmd(0.0)
+    env = Environment.default()
+    x, _ = integrate(lambda t, x: vehicle_derivative(t, x, c, big, env), x0, 0.0, 30.0, 0.01)
+    rho = atmosphere(x[2]).density
+    m = mass_properties(0.0, big).mass
+    expected = np.sqrt(2 * m * G0 / (rho * big.aero.cd_axial * big.aero.area_axial))
+    assert -x[VEL][2] == pytest.approx(expected, rel=0.01)
+
+
+def test_crosswind_pushes_hovering_vehicle_downwind(cfg):
+    low = cfg.model_copy(update={"engine": cfg.engine.model_copy(update={"thrust_min_frac": 0.1})})
+    frac = mass_properties(20.0, low).mass * G0 / low.engine.thrust_max
+    wind = Wind(np.array([10.0, 0, 0]), 0.0, 1.0, np.random.default_rng(0))
+    env = Environment(wind=wind)
+    x = upright(thr=frac)
+    xd = vehicle_derivative(0.0, x, cmd(frac), low, env)
+    assert xd[VEL][0] > 0
+    assert xd[VEL][1] == pytest.approx(0, abs=1e-12)
+    assert xd[VEL][2] == pytest.approx(0, abs=1e-9)  # lateral flow only, no axial drag
+
+
+def test_crosswind_weathercock_torque_reaches_angular_acceleration(cfg):
+    low = cfg.model_copy(update={"engine": cfg.engine.model_copy(update={"thrust_min_frac": 0.1})})
+    frac = mass_properties(20.0, low).mass * G0 / low.engine.thrust_max
+    env = Environment(wind=Wind(np.array([10.0, 0, 0]), 0.0, 1.0, np.random.default_rng(0)))
+    xd = vehicle_derivative(0.0, upright(thr=frac), cmd(frac), low, env)
+    mp = mass_properties(20.0, low)
+    a = low.aero
+    fx = 0.5 * 1.225 * a.cd_lateral * a.area_lateral * 10.0**2  # sea level, wind toward +x
+    expected = (a.cp_z - mp.com_z) * fx / mp.inertia[1, 1]
+    assert xd[OMEGA][1] == pytest.approx(expected, rel=1e-3)
+    assert xd[OMEGA][[0, 2]] == pytest.approx([0, 0], abs=1e-9)
