@@ -219,9 +219,9 @@ def test_result_carries_seed_and_config_hash(cfg):
 
 def test_ten_second_run_is_fast_enough(cfg):
     sim = sim_for(cfg, OpenLoopController(Command(0.5, np.zeros(2), 0.0)), Environment.default())
-    t0 = time.perf_counter()
+    t0 = time.process_time()  # CPU time, so a loaded machine does not make this flaky
     res = sim.run(t_end=10.0)
-    elapsed = time.perf_counter() - t0
+    elapsed = time.process_time() - t0
     assert len(res.log) > 9000
     assert elapsed < 10.0
 
