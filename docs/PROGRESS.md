@@ -16,7 +16,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S05 | Ground contact and events | done | S04 | 2026-10-18 | contact_loads -> ContactOutput (incl. base_strike); vehicle_derivative(..., info=None) always applies contact; sim/events.py (Outcome, EventState, check_events, EventMonitor); thresholds in SimConfig. S06 must run EventMonitor each step. Reviewed: PASS (round 1) |
 | S06 | Simulation engine, logging, delays | done | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Reviewed: PASS (round 1) |
 | S07 | Sensor models | done | S06 | 2026-10-18 | SensorsConfig (imu/baro/gps/lidar), sensors/{imu,baro,gps,lidar,suite}.py, `SensorSuite.sample/needs_info`, `info["specific_force_B"]`; `Simulation(perfect_state=False)` calls `controller.step(SensorData, t)`. Reviewed: PASS (round 1) |
-| S08 | Control interface and attitude controller | todo | S06 | - | |
+| S08 | Control interface and attitude controller | in_progress | S06 | 2026-10-19 | |
 | S09 | Position cascade and mission state machine | todo | S08 | - | |
 | S10 | State estimator (EKF) | todo | S07, S09 | - | |
 | S11 | Scenarios, faults, Monte Carlo | todo | S09 | - | |
