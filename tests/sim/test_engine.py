@@ -264,3 +264,31 @@ def test_sensor_mode_imu_sees_free_fall_and_none_pattern(cfg):
     assert np.abs(acc.mean(axis=0)).max() < 0.2  # biases only; no gravity in specific force
     first = ctl.calls[0][1]
     assert first.gps_pos is None  # 150 ms latency: nothing delivered yet
+
+
+class LoggingController:
+    """Controller with the optional log hook the engine looks for."""
+
+    log_columns = ("est_t", "est_two")
+
+    def __init__(self):
+        self.t = float("nan")
+
+    def reset(self):
+        self.t = float("nan")
+
+    def step(self, sensors, t):
+        self.t = t
+        return OFF
+
+    def log_values(self):
+        return np.array([self.t, 2.0])
+
+
+def test_controller_log_hook_adds_columns_holding_the_latest_values(cfg):
+    ctl = LoggingController()
+    res = sim_for(cfg, ctl, perfect_state=False, log_decimation=1).run(t_end=0.5)
+    df = res.log
+    assert df["est_two"].iloc[-1] == 2.0
+    assert np.isnan(df["est_t"].iloc[0]) or df["est_t"].iloc[0] == 0.0
+    assert df["est_t"].iloc[-1] == pytest.approx(0.49)  # the last 100 Hz call before t = 0.5

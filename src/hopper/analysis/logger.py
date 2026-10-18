@@ -1,6 +1,7 @@
 """Run log: pre-allocated arrays, parquet round trip with run metadata."""
 
 import json
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
@@ -50,14 +51,20 @@ def save_frame(df: pd.DataFrame, path) -> None:
 class Logger:
     """Collects one row per physics step (or every `decimation`-th); the terminal row is kept."""
 
-    def __init__(self, decimation: int = 1, metadata: dict | None = None) -> None:
+    def __init__(
+        self,
+        decimation: int = 1,
+        metadata: dict | None = None,
+        extra_columns: tuple[str, ...] = (),
+    ) -> None:
         if decimation < 1:
             raise ValueError(f"decimation must be >= 1, got {decimation}")
         self.decimation = decimation
         self.metadata = dict(metadata or {})
+        self.extra_columns = tuple(extra_columns)  # e.g. estimator output, logged after the scalars
         self._calls = 0
         self._n = 0
-        self._data = np.empty((_INITIAL_CAPACITY, _N_FLOAT))
+        self._data = np.empty((_INITIAL_CAPACITY, _N_FLOAT + len(self.extra_columns)))
         self._event = np.zeros(_INITIAL_CAPACITY, dtype=np.int8)
 
     def wants_row(self) -> bool:
@@ -74,7 +81,10 @@ class Logger:
         contact_force: float,
         n_contacts: int,
         event: Outcome | None = None,
+        extra: Sequence[float] | None = None,
     ) -> None:
+        if len(extra if extra is not None else ()) != len(self.extra_columns):
+            raise ValueError(f"expected {len(self.extra_columns)} extra values, got {extra}")
         keep = self.wants_row() or event is not None
         self._calls += 1
         if not keep:
@@ -89,12 +99,24 @@ class Logger:
         row = self._data[self._n]
         row[0] = t
         row[1 : 1 + N_STATE] = x
-        row[1 + N_STATE :] = (mass, thrust, throttle, gx, gy, roll, contact_force, n_contacts)
+        row[1 + N_STATE : _N_FLOAT] = (
+            mass,
+            thrust,
+            throttle,
+            gx,
+            gy,
+            roll,
+            contact_force,
+            n_contacts,
+        )
+        row[_N_FLOAT:] = () if extra is None else extra
         self._event[self._n] = 0 if event is None else event.value
         self._n += 1
 
     def to_dataframe(self) -> pd.DataFrame:
-        df = pd.DataFrame(self._data[: self._n].copy(), columns=COLUMNS[:-1])
+        df = pd.DataFrame(
+            self._data[: self._n].copy(), columns=[*COLUMNS[:-1], *self.extra_columns]
+        )
         df["n_contacts"] = df["n_contacts"].astype(np.int64)
         df["event"] = [_EVENT_NAMES.get(int(c), "") for c in self._event[: self._n]]
         df.attrs.update(self.metadata)

@@ -22,7 +22,12 @@ from hopper.types import Command, make_state
 def run_mission(cfg, args) -> None:
     t0 = time.perf_counter()
     res, s = run_hop(
-        cfg, seed=args.seed, command_delay=args.delay, wind_mean=tuple(args.wind), log_decimation=1
+        cfg,
+        seed=args.seed,
+        command_delay=args.delay,
+        wind_mean=tuple(args.wind),
+        log_decimation=1,
+        perfect_state=not args.ekf,
     )
     elapsed = time.perf_counter() - t0
     print(f"outcome: {s.outcome.name} at t = {s.t_end:.2f} s (seed {res.seed})")
@@ -45,6 +50,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default=None, help="parquet path for the log")
     ap.add_argument("--mission", choices=["hop"], default=None, help="fly a closed-loop mission")
+    ap.add_argument("--ekf", action="store_true", help="fly on sensors and the EKF estimate")
     ap.add_argument("--delay", type=float, default=0.0, help="command delay (s)")
     ap.add_argument("--wind", type=float, nargs=3, default=(0.0, 0.0, 0.0), metavar=("E", "N", "U"))
     args = ap.parse_args()

@@ -9,6 +9,8 @@ from hopper.control.mission import MissionController, MissionParams
 from hopper.control.params import ControlParams
 from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
+from hopper.estimated_controller import EstimatedController
+from hopper.estimation.ekf import EkfParams
 from hopper.sim.engine import Simulation
 from hopper.sim.events import Outcome
 from hopper.types import make_state
@@ -32,6 +34,44 @@ def control_params_from_config(cfg: VehicleConfig) -> ControlParams:
     )
 
 
+_MIN_SIGMA = 1e-4  # measurement noise floor: a noise-free sensor must not make S singular
+
+
+def ekf_params_from_config(cfg: VehicleConfig) -> EkfParams:
+    """The filter's noise model, taken from the sensor config (what a designer would know)."""
+    s = cfg.sensors
+    imu = s.imu
+    floor = lambda x: max(x, _MIN_SIGMA)  # noqa: E731
+    return EkfParams(
+        gyro_sigma=imu.gyro_noise_density * imu.rate**0.5,
+        accel_sigma=imu.accel_noise_density * imu.rate**0.5,
+        gyro_bias_rw=imu.gyro_bias_rw,
+        accel_bias_rw=imu.accel_bias_rw,
+        gyro_bias_init=imu.gyro_bias_init,
+        accel_bias_init=imu.accel_bias_init,
+        imu_delay=imu.latency + 0.5 / imu.rate,
+        baro_sigma=floor(s.baro.noise_sigma),
+        baro_bias_rw=s.baro.bias_rw,
+        baro_latency=s.baro.latency,
+        gps_pos_sigma=(
+            floor(s.gps.pos_sigma_h),
+            floor(s.gps.pos_sigma_h),
+            floor(s.gps.pos_sigma_v),
+        ),
+        gps_vel_sigma=floor(s.gps.vel_sigma),
+        gps_latency=s.gps.latency,
+        lidar_sigma_abs=floor(s.lidar.sigma_abs),
+        lidar_sigma_rel=s.lidar.sigma_rel,
+        lidar_latency=s.lidar.latency,
+        dry_mass=cfg.mass.dry_mass,
+        prop_mass_initial=cfg.tank.prop_mass_initial,
+        thrust_max=cfg.engine.thrust_max,
+        thrust_min_frac=cfg.engine.thrust_min_frac,
+        isp=cfg.engine.isp,
+        throttle_tau=cfg.engine.throttle_tau,
+    )
+
+
 @dataclass(frozen=True)
 class HopSummary:
     outcome: Outcome
@@ -52,8 +92,14 @@ def run_hop(
     wind_mean: tuple[float, float, float] = (0.0, 0.0, 0.0),
     t_end: float | None = None,
     log_decimation: int = 10,
+    perfect_state: bool = True,
+    ekf_params: EkfParams | None = None,
 ):
-    """Fly the hop with perfect-state feedback. Returns `(SimResult, HopSummary)`."""
+    """Fly the hop. Returns `(SimResult, HopSummary)`.
+
+    `perfect_state=False` flies on the EKF estimate built from the sensors (`ekf_params` default to
+    `ekf_params_from_config(cfg)`) and adds `est_*` / `sig_*` columns to the log.
+    """
     mission = mission or MissionParams()
     rng = np.random.default_rng(seed)
     com_z = mass_properties(cfg.tank.prop_mass_initial, cfg).com_z
@@ -68,8 +114,17 @@ def run_hop(
     )
     env = Environment(wind=Wind(np.array(wind_mean), 0.0, 1.0, rng))
     controller = MissionController(control_params_from_config(cfg), mission)
+    if not perfect_state:
+        controller = EstimatedController(ekf_params or ekf_params_from_config(cfg), controller)
     sim = Simulation(
-        cfg, controller, env, x0, rng, command_delay=command_delay, log_decimation=log_decimation
+        cfg,
+        controller,
+        env,
+        x0,
+        rng,
+        perfect_state=perfect_state,
+        command_delay=command_delay,
+        log_decimation=log_decimation,
     )
     res = sim.run(t_end)
     return res, summarize_hop(res, cfg, mission)
