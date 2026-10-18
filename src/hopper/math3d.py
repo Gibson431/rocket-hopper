@@ -139,3 +139,22 @@ def quat_derivative(q: np.ndarray, omega_body: np.ndarray) -> np.ndarray:
 
 def skew(v: np.ndarray) -> np.ndarray:
     return np.array([[0.0, -v[2], v[1]], [v[2], 0.0, -v[0]], [-v[1], v[0], 0.0]])
+
+
+def cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Cross product over the last axis (3 components); several times faster than np.cross."""
+    a, b = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
+    if a.ndim == 1 and b.ndim == 1:
+        return np.array(
+            [
+                a[1] * b[2] - a[2] * b[1],
+                a[2] * b[0] - a[0] * b[2],
+                a[0] * b[1] - a[1] * b[0],
+            ]
+        )
+    a, b = np.broadcast_arrays(a, b)
+    out = np.empty(a.shape)
+    out[..., 0] = a[..., 1] * b[..., 2] - a[..., 2] * b[..., 1]
+    out[..., 1] = a[..., 2] * b[..., 0] - a[..., 0] * b[..., 2]
+    out[..., 2] = a[..., 0] * b[..., 1] - a[..., 1] * b[..., 0]
+    return out

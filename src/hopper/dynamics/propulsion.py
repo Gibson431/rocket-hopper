@@ -6,6 +6,7 @@ import numpy as np
 
 from hopper.config import VehicleConfig
 from hopper.dynamics.mass_model import MassProperties
+from hopper.math3d import cross
 from hopper.types import GIM, GIMR, N_STATE, PROP, THR, Command
 
 G0 = 9.80665
@@ -36,7 +37,7 @@ def propulsion(
     gx, gy = g
     d_b = np.array([np.cos(gx) * np.sin(gy), -np.sin(gx), np.cos(gx) * np.cos(gy)])
     force_b = thrust * d_b
-    torque_b = np.cross([0.0, 0.0, -mp.com_z], force_b)
+    torque_b = cross([0.0, 0.0, -mp.com_z], force_b)
     torque_b[2] += float(np.clip(cmd.roll_torque, -1.0, 1.0)) * cfg.rcs.max_roll_torque
 
     xdot = np.zeros(N_STATE)

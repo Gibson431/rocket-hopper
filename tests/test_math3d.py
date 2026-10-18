@@ -164,3 +164,13 @@ def test_skew_matrix_gives_the_cross_product():
 
 def test_quat_normalize_returns_unit_norm():
     assert np.linalg.norm(m.quat_normalize(np.array([2.0, 0, 0, 0]))) == pytest.approx(1.0)
+
+
+def test_cross_matches_numpy_for_single_and_batched_vectors():
+    from hopper.math3d import cross
+
+    rng = np.random.default_rng(3)
+    a, b = rng.normal(size=(2, 3)), rng.normal(size=(2, 3))
+    assert cross(a[0], b[0]) == pytest.approx(np.cross(a[0], b[0]), abs=1e-15)
+    assert cross(a, b) == pytest.approx(np.cross(a, b), abs=1e-15)
+    assert cross(a, b[0]) == pytest.approx(np.cross(a, b[0]), abs=1e-15)

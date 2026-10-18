@@ -14,7 +14,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g); S04 replaced `g` with `env` (see S04 row). S05 adds contact via the env_force_I/env_torque_B hooks. Reviewed: PASS (round 2) |
 | S04 | Environment and aerodynamics | done | S03 | 2026-10-18 | environment (gravity, ISA `atmosphere`->Atmosphere, pressure_to_altitude, Wind, Environment), aero_loads, `vehicle_derivative(t,x,cmd,cfg,env=None,env_force_I,env_torque_B)`. Sim loop (S06) must call `env.wind.advance(dt)` per step. Reviewed: PASS (round 2) |
 | S05 | Ground contact and events | done | S04 | 2026-10-18 | contact_loads -> ContactOutput (incl. base_strike); vehicle_derivative(..., info=None) always applies contact; sim/events.py (Outcome, EventState, check_events, EventMonitor); thresholds in SimConfig. S06 must run EventMonitor each step. Reviewed: PASS (round 1) |
-| S06 | Simulation engine, logging, delays | todo | S05 | - | |
+| S06 | Simulation engine, logging, delays | in_progress | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Awaiting review |
 | S07 | Sensor models | todo | S06 | - | |
 | S08 | Control interface and attitude controller | todo | S06 | - | |
 | S09 | Position cascade and mission state machine | todo | S08 | - | |
@@ -59,6 +59,12 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-18, S05: `check_events(t, x, contact, cfg, prev_state: EventState)` mutates `prev_state`; `EventMonitor(cfg).update(t, x, contact)` wraps it. Touchdown crash speed is the vertical speed from the call *before* first contact (the post-contact speed is already cushioned). `TIMEOUT` is reported when `t >= sim.max_time`. `FLAMEOUT_FALLING` exists in `Outcome` but is not detected (the step does not define it); S06 or later can add it.
 - 2026-10-18, S05: `tipover` uses `tilt > 60 deg` while any foot is in contact; `CRASHED` precedes `TIPPED_OVER`, which precedes `OUT_OF_BOUNDS`, `LANDED`, `TIMEOUT` when several hold at once.
 
+- 2026-10-18, S06: `Simulation.__init__` calls `env.wind.reset(int(rng.integers(2**32)))`, so the single rng seed fixes the gust sequence (the wind's own rng is replaced). `SimResult.seed` is the rng's `SeedSequence` entropy (None if not an int). `run()` is meant to be called once per `Simulation`.
+- 2026-10-18, S06: `SimResult.outcome` is `RUNNING` when the run stops at `t_end` before `max_time` and no outcome fired. Controller is not called on the terminal row, so a 10 s run at 100 Hz makes exactly 1000 calls. Command delay is quantised to `round(delay/dt)` steps; delay 0 applies the command in the same step.
+- 2026-10-18, S06: log `event` column is `""` except on the terminal row (outcome name); the terminal row is always kept under decimation. Metadata (seed, config hash = first 16 hex of sha256 of `model_dump_json`) is in `df.attrs` and the parquet file metadata. Extra API: `Logger(decimation, metadata)`, `Logger.wants_row()`, module `save_frame(df, path)`, `Logger.load(path)` (static, returns the frame), `Simulation(..., log_decimation=1)`.
+- 2026-10-18, S06: added `math3d.cross` (a faster `np.cross` replacement) and used it in dynamics; `np.cross` was ~45% of run time. `OpenLoopController(command=None, schedule=None, default=None)`.
+- 2026-10-18, S06: measured speed is ~1300 physics steps/s (default vehicle, aero on, contact evaluated each stage); a 10 s run takes ~7.5 s, inside the step's 10 s bound. Remaining cost is small-array numpy overhead in the dynamics.
+
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
@@ -69,6 +75,7 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 - S03 review suggestions: amend S03 step text (CoM is not monotonic over the full burn); add negative-side and gy-axis cases for the gimbal angle/rate-limit tests; test propellant crossing zero mid-burn; decide where to validate `Command` ranges (propulsion clamps for now).
 - S04 review suggestions: test simultaneous vehicle motion plus wind in `aero_loads`; check `Wind.advance` stays a no-op with sigma 0 across a reset.; add a direct hand-computed mixed axial+lateral `aero_loads` test and a tilted-vehicle cross-flow torque test.
 - S05 review suggestions: confirm the V_EPS = 0.05 deviation is acceptable; mention the SimConfig thresholds and `info` hook in CONVENTIONS.md; implement `FLAMEOUT_FALLING` detection when its rule is defined.
+- S06 speed: ~1300 steps/s is slow for Monte Carlo. Options: scalar/float fast paths in `contact_loads`, `propulsion`, `rigid_body_derivative`; skip contact when well above the ground; reuse the k1 evaluation for events.
 
 ## Session log
 
@@ -82,3 +89,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-17, S03, todo -> done: mass_properties, propulsion (PropulsionOutput), vehicle_derivative with env hooks and `g` kwarg, 133 tests total. Reviewed: PASS (round 2; round 1 failed on unpinned gimbal damping and a placeholder note). CoM dips early in the burn (see Decisions). Next: S04.
 - 2026-10-18, S04, todo -> done: environment.py, aero.py, vehicle_derivative takes `env`; 164 tests. Reviewed: PASS (round 2; round 1 failed on unpinned aero torque in vehicle_derivative and unlogged decisions). Next: S05.
 - 2026-10-18, S05, todo -> done: contact.py, events.py, SimConfig thresholds, 30 new tests (194 total). Reviewed: PASS (round 1). Friction V_EPS widened to 0.05 m/s for RK4 stability at dt = 1 ms (see Decisions). Next: S06 (call `EventMonitor.update` every step and `env.wind.advance(dt)`).
+- 2026-10-18, S06, in_progress: simulation engine, logger, OpenLoopController, run_scenario.py, 29 new tests (223 total). Speed ~1300 steps/s. Next: review.

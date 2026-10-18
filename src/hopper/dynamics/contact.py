@@ -6,7 +6,7 @@ import numpy as np
 
 from hopper.config import LegsConfig
 from hopper.dynamics.mass_model import MassProperties
-from hopper.math3d import quat_to_dcm
+from hopper.math3d import cross, quat_to_dcm
 from hopper.types import OMEGA, POS, QUAT, VEL
 
 # Friction regularisation width. 0.01 m/s (the step's first choice) makes yaw friction stiff enough
@@ -44,7 +44,7 @@ def contact_loads(x: np.ndarray, mp: MassProperties, cfg: LegsConfig) -> Contact
     )  # (n, 3) body
     r_i = p @ rot.T  # CoM -> foot, inertial
     foot_pos = x[POS] + r_i
-    foot_vel = x[VEL] + (np.cross(x[OMEGA], p)) @ rot.T
+    foot_vel = x[VEL] + (cross(x[OMEGA], p)) @ rot.T
 
     depth = -foot_pos[:, 2]
     normal = np.where(
@@ -59,7 +59,7 @@ def contact_loads(x: np.ndarray, mp: MassProperties, cfg: LegsConfig) -> Contact
     f_t = -cfg.friction * normal[:, None] * gain[:, None] * v_t
 
     forces = np.column_stack([f_t, normal])  # (n, 3) inertial
-    torque_i = np.cross(r_i, forces).sum(axis=0)
+    torque_i = cross(r_i, forces).sum(axis=0)
 
     base_z = x[POS][2] + (rot @ np.array([0.0, 0.0, -mp.com_z]))[2]
     return ContactOutput(
