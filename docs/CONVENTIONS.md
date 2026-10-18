@@ -119,9 +119,18 @@ Models are frozen and reject unknown keys. `make_state` renormalises the quatern
 - `sim`: `dt` (default 0.001), `controller_rate`, `max_time`, and outcome thresholds (`v_crash`, `crash_tilt`, `tipover_tilt`, `land_*`, `max_range`, `max_alt`; see `hopper.sim.events`). `Command` rejects non-finite fields; throttle/roll ranges are clamped in `propulsion`
 
 Placeholder vehicle for tests: ~100 kg total (80 kg dry + 20 kg propellant), thrust_max 2500 N,
-min throttle 40% (1000 N), gimbal limit 8 deg, 60 deg/s rate, 4 legs on a 0.6 m radius circle.
-Note that minimum thrust (1000 N) is roughly equal to full-vehicle weight (~981 N), so hover is only
-marginal when full and easy when light. This is typical of real hoppers; keep it in mind for S09.
+min throttle 30% (750 N), gimbal limit 8 deg, 60 deg/s rate, 4 legs on a 0.6 m radius circle.
+Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasible at every mass
+(40% was not: 1000 N exceeds even the full 981 N weight).
+
+## Control package (`hopper.control`)
+
+- `ControlParams` (vehicle facts the controller may know) is built from the config by
+  `hopper.scenario_glue.control_params_from_config`; the control package never imports the config.
+- Altitude in the controller is the foot-tip height above ground (`ControlParams.foot_height`).
+- `AttitudeController` (S08) -> `PositionController` (altitude + horizontal, driven by a `Setpoint`) ->
+  `MissionController` (state machine + `PositionController`). All are perfect-state
+  (`step_state`) until S10 adds the estimator.
 
 ## Randomness
 

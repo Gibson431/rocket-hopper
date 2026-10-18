@@ -17,7 +17,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S06 | Simulation engine, logging, delays | done | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Reviewed: PASS (round 1) |
 | S07 | Sensor models | done | S06 | 2026-10-18 | SensorsConfig (imu/baro/gps/lidar), sensors/{imu,baro,gps,lidar,suite}.py, `SensorSuite.sample/needs_info`, `info["specific_force_B"]`; `Simulation(perfect_state=False)` calls `controller.step(SensorData, t)`. Reviewed: PASS (round 1) |
 | S08 | Control interface and attitude controller | done | S06 | 2026-10-19 | AttitudeController/AttitudeGains/AttitudeOutput, ControlParams, scenario_glue.control_params_from_config, AttitudeHoldController (base for S09), scripts/tune_attitude.py. PD has no integral: aero torque offset grows with speed. Reviewed: PASS (round 2) |
-| S09 | Position cascade and mission state machine | todo | S08 | - | |
+| S09 | Position cascade and mission state machine | done | S08 | 2026-10-19 | position.py (Altitude/Horizontal/PositionController, Setpoint), mission.py (MissionStateMachine, MissionController), scenario_glue.run_hop, `run_scenario.py --mission hop`. Hop (seed 0): LANDED, err 0.002 m, touchdown 0.75 m/s (0.72 with decimated log), tilt ~0 deg, flight 22.6 s, fuel 11.1 kg; 20 ms delay err 0.002 m; 3 m/s wind err 0.14 m. thrust_min_frac now 0.3. Reviewed: PASS (round 1) |
 | S10 | State estimator (EKF) | todo | S07, S09 | - | |
 | S11 | Scenarios, faults, Monte Carlo | todo | S09 | - | |
 | S12 | Plots and 3D replay | todo | S06 | - | |
@@ -78,6 +78,14 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-19, S08: `AttitudeHoldController.step` (sensor mode) raises NotImplementedError; it needs the EKF (S10). It uses the commanded thrust fraction, not the lagged thrust.
 - 2026-10-19, S08: the 300 ms delay test asserts divergence. Measured: stable to 100 ms, ~16 deg tilt at 200 ms, ~70 deg at 300 ms (10 deg start). The pure PD loop has an aero-torque offset growing with speed (~2 deg at 10 s in a 5 deg pitch hold); S09 should add compensation.
 
+- 2026-10-19, S09: `thrust_min_frac` lowered from 0.4 to 0.3 in `configs/vehicle_default.yaml` (the step allowed ~0.3). The CONVENTIONS/step note that hover is "marginal when full and easy when light" is backwards: min thrust 1000 N exceeds the full 981 N weight at every mass, so hover was impossible. 0.3 gives 750 N, below the 785 N dry weight, so hover is feasible at every mass. `test_config` updated.
+- 2026-10-19, S09: altitude is the foot-tip height above ground (`ControlParams.foot_height`, new `leg_length` field, set by the glue), from estimated CoM height and mass. Mission altitudes, `cutoff_alt` etc. are in this frame; the controller assumes flat ground at z = 0.
+- 2026-10-19, S09: altitude loop is a P-PI cascade (altitude error -> limited velocity command; PI on velocity error -> acceleration), not a plain PID on altitude. It gives no overshoot on large steps and the integrator removes unmodelled acceleration (anti-windup: frozen while the throttle is pinned). Horizontal loop is the specified PD, plus a closing-speed cap (3 m/s) on the position term, a 15 degree tilt clamp and a 30 deg/s slew on the thrust axis.
+- 2026-10-19, S09: `PositionController` (in `position.py`) wires altitude + horizontal + attitude from a `Setpoint`; `MissionController` is the state machine plus that. Mission `target_xy` is an offset from the take-off point. Vertical reference is a velocity profile with slope `ref_accel` = 1 m/s^2. Descent, touchdown and abort are velocity-regulated (no altitude reference). Contact is detected as foot altitude <= `cutoff_alt`; the "acceleration spike" alternative is not implemented.
+- 2026-10-19, S09: `ABORT` triggers: tilt > 30 deg for 0.1 s, |altitude error| > 6 m for 0.5 s, or 40 s in ASCEND/TRANSLATE/DESCEND/TOUCHDOWN. Below 1 m it goes straight to CUTOFF; otherwise it levels (zero horizontal acceleration command) and descends. The abort does not try to reach the landing site.
+- 2026-10-19, S09: `check_events` only reports `LANDED` after the feet have left the ground at least once (`EventState.has_flown`). Without it a vehicle resting on the pad at the start satisfied the landing conditions and the run ended at t = 1 s. S05 landing tests now prepend a flight step. `run_hop` starts the legs 1 cm compressed so the pad counts as contact from t = 0.
+- 2026-10-19, S09: `scenario_glue.run_hop(cfg, mission, seed, command_delay, wind_mean)` returns `(SimResult, HopSummary)`; `scripts/run_scenario.py --mission hop [--delay s] [--wind E N U]` prints the summary.
+
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
@@ -93,6 +101,7 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 - S07 review suggestions: `_Channel` queue stores `sample_t` but nothing reads it (internal, unused); `specific_force_B` includes `env_force_I` hooks (mention in vehicle docstring); one extra derivative call per IMU tick costs speed.
 - Backlog-hardening review suggestions: strengthen `test_early_exit_agrees_with_full_computation_near_the_bound` (tilted vehicle just below `reach` with a foot touching must give nonzero loads); test `-inf` and NaN in gimbal[1] for `Command`.
 - S08 review suggestions: add ControlParams/control_params_from_config/AttitudeHoldController pointers to CONVENTIONS.md when S09 builds on them; direct per-axis overshoot check in the 10 degree test; tighten the 60 degree saturation test; allowlist-style import boundary test (only hopper.types, hopper.math3d); S09 needs integral or aero compensation for the attitude offset.
+- S09 review suggestions: add a test pinning the horizontal closing-speed cap (`max_speed`; removing it passes every test); contact detection only uses foot altitude (add the acceleration-spike alternative once S10 gives a noisy altitude); the S09 step text still says 40% min throttle.
 
 ## Session log
 
@@ -110,3 +119,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-18, S07, todo -> done: sensor models, suite, engine sensor path, accel/gyro/baro/GPS/lidar tests (~26 new). Reviewed: PASS (round 1). Next: S08 (controller) or S12; S10 needs S07 + S09. Controllers get `SensorData` via `step()` when `perfect_state=False`.
 - 2026-10-18, backlog hardening (no step): finite `Command` check, `contact_loads` early exit, smoke/CPU-time tests, docs. Reviewed: PASS (round 1). 261 tests.
 - 2026-10-19, S08, todo -> done: attitude PD controller (gimbal + RCS roll), ControlParams, scenario_glue bridge, AttitudeHoldController, tune script, import-boundary test; 299 tests. Reviewed: PASS (round 2; round 1 failed on untested slew limit/CoM scheduling and unlogged decisions). Next: S09 builds on AttitudeHoldController/AttitudeController.
+- 2026-10-19, S09, todo -> done: position.py, mission.py, run_hop + `run_scenario.py --mission hop`, thrust_min_frac 0.3, `has_flown` landing guard; 359 tests. Reviewed: PASS (round 1). Hop lands 0.002 m from the site at 0.75 m/s; 20 ms delay and 3 m/s wind also LANDED (0.14 m). Next: S10 (needs `MissionController.step` for sensors) or S11.

@@ -31,6 +31,9 @@ def run(cfg, steps, t0=0.0):
     return [mon.update(t0 + i * DT, x, c) for i, (x, c) in enumerate(steps)]
 
 
+FLIGHT = (state(pos=(0, 0, 2.0), vel=(0, 0, -0.1)), contact(False))
+
+
 def test_nothing_happens_in_flight(cfg):
     out = run(cfg, [(state(pos=(0, 0, 5), vel=(0, 0, -2)), contact(False))] * 50)
     assert all(o is None for o in out)
@@ -38,17 +41,22 @@ def test_nothing_happens_in_flight(cfg):
 
 def test_landed_requires_one_second_of_calm_contact(cfg):
     calm = (state(pos=(0, 0, 1.46)), contact())
-    out = run(cfg, [calm] * 150)
-    assert out.index(Outcome.LANDED) == pytest.approx(round(cfg.sim.land_hold / DT), abs=1)
+    out = run(cfg, [FLIGHT] + [calm] * 150)
+    assert out.index(Outcome.LANDED) == pytest.approx(1 + round(cfg.sim.land_hold / DT), abs=1)
     assert all(o is None for o in out[: out.index(Outcome.LANDED)])
+
+
+def test_resting_on_the_pad_before_flight_is_not_a_landing(cfg):
+    calm = (state(pos=(0, 0, 1.46)), contact())
+    assert Outcome.LANDED not in run(cfg, [calm] * 300)
 
 
 def test_landed_hold_timer_resets_when_a_condition_is_violated(cfg):
     calm = (state(), contact())
     shaky = (state(omega=(0.5, 0, 0)), contact())
-    out = run(cfg, [calm] * 80 + [shaky] + [calm] * 80)
+    out = run(cfg, [FLIGHT] + [calm] * 80 + [shaky] + [calm] * 80)
     assert Outcome.LANDED not in out
-    out = run(cfg, [calm] * 80 + [shaky] + [calm] * 110)
+    out = run(cfg, [FLIGHT] + [calm] * 80 + [shaky] + [calm] * 110)
     assert out.index(Outcome.LANDED) > 80 + 100
 
 

@@ -28,6 +28,8 @@ class EventState:
     in_contact: bool = False
     prev_vz: float = 0.0  # vertical speed on the previous call (pre-touchdown approach speed)
     calm_since: float | None = None  # start of the current run of landing conditions
+    # True once the feet have left the ground: resting on the pad is not a landing.
+    has_flown: bool = False
 
 
 def tilt_angle(x: np.ndarray) -> float:
@@ -48,6 +50,7 @@ def check_events(
     touchdown = contact.any_contact and not prev_state.in_contact
     approach_vz = prev_state.prev_vz
     prev_state.in_contact = contact.any_contact
+    prev_state.has_flown |= not contact.any_contact
     prev_state.prev_vz = float(x[VEL][2])
 
     if contact.base_strike:
@@ -60,7 +63,8 @@ def check_events(
         return Outcome.OUT_OF_BOUNDS
 
     calm = (
-        bool(np.all(contact.foot_forces > 0.0))
+        prev_state.has_flown
+        and bool(np.all(contact.foot_forces > 0.0))
         and np.linalg.norm(x[VEL]) < sim.land_speed
         and tilt < sim.land_tilt
         and np.linalg.norm(x[OMEGA]) < sim.land_rate

@@ -11,7 +11,7 @@ tank:
   radius: 0.2
 engine:
   thrust_max: 2500.0
-  thrust_min_frac: 0.4
+  thrust_min_frac: 0.3  # 750 N: below dry weight (785 N), so hover is feasible at every mass
   isp: 200.0
   throttle_tau: 0.1
   gimbal_max: 0.13962634015954636  # 8 deg
