@@ -33,7 +33,40 @@ aero:
   area_axial: 0.2
   area_lateral: 0.5
   cp_z: 1.1
-sensors: {}
+sensors:  # SI units; rad for angles
+  imu:
+    rate: 400.0
+    latency: 0.002
+    gyro_noise_density: 8.726646259971648e-05  # 0.005 deg/s/sqrt(Hz)
+    gyro_bias_init: 2.4240684e-05  # 5 deg/h
+    gyro_bias_rw: 4.040114e-07  # rad/s/sqrt(s); drifts by gyro_bias_init in 1 h
+    gyro_range: 34.90658503988659  # 2000 deg/s
+    accel_noise_density: 9.80665e-04  # 100 ug/sqrt(Hz)
+    accel_bias_init: 0.02
+    accel_bias_rw: 1.0e-4
+    accel_range: 156.9064  # 16 g
+  baro:
+    rate: 50.0
+    latency: 0.02
+    noise_sigma: 0.5
+    bias_rw: 0.05
+  gps:
+    rate: 10.0
+    latency: 0.15
+    pos_sigma_h: 0.5
+    pos_sigma_v: 1.0
+    vel_sigma: 0.05
+    dropout_prob: 0.0
+    outages: []
+  lidar:
+    rate: 50.0
+    latency: 0.01
+    min_range: 0.2
+    max_range: 40.0
+    sigma_abs: 0.02
+    sigma_rel: 0.001
+    max_tilt: 1.0471975511965976  # 60 deg
+    mount_b: [0.0, 0.0, 0.0]
 sim:
   dt: 0.001
   controller_rate: 100.0

@@ -207,12 +207,6 @@ def test_log_records_mass_and_thrust(cfg):
     assert df["prop"].iloc[0] == 20.0 and PROP == 13
 
 
-def test_non_perfect_state_mode_not_implemented_yet(cfg):
-    sim = sim_for(cfg, OpenLoopController(), perfect_state=False)
-    with pytest.raises(NotImplementedError, match="S07"):
-        sim.run(t_end=0.1)
-
-
 def test_result_carries_seed_and_config_hash(cfg):
     res = sim_for(cfg, OpenLoopController(), seed=5).run(t_end=0.05)
     assert isinstance(res, SimResult)
@@ -230,3 +224,43 @@ def test_ten_second_run_is_fast_enough(cfg):
     elapsed = time.perf_counter() - t0
     assert len(res.log) > 9000
     assert elapsed < 10.0
+
+
+class SensorRecorder:
+    def __init__(self):
+        self.calls = []
+
+    def reset(self):
+        self.calls = []
+
+    def step(self, sensors, t):
+        self.calls.append((t, sensors))
+        return OFF
+
+    def step_state(self, est, t):
+        raise AssertionError("sensor mode must use step")
+
+
+def test_sensor_mode_delivers_samples_at_expected_rates(cfg):
+    ctl = SensorRecorder()
+    sim_for(cfg, ctl, perfect_state=False).run(t_end=2.0)
+    assert len(ctl.calls) == 200
+    got = {f: 0 for f in ("gyro", "accel", "baro_alt", "gps_pos", "gps_vel", "lidar_range")}
+    for _, s in ctl.calls:
+        for f in got:
+            got[f] += getattr(s, f) is not None
+    # 100 Hz controller: IMU every call, baro/lidar every other call, GPS every tenth
+    assert got["gyro"] == got["accel"] == 199  # the first call precedes the 2 ms IMU latency
+    assert abs(got["baro_alt"] - 100) <= 2 and abs(got["gps_pos"] - 20) <= 2
+    assert got["gps_pos"] == got["gps_vel"]
+    t_last, s_last = ctl.calls[-1]
+    assert s_last.t == pytest.approx(t_last)
+
+
+def test_sensor_mode_imu_sees_free_fall_and_none_pattern(cfg):
+    ctl = SensorRecorder()
+    sim_for(cfg, ctl, perfect_state=False).run(t_end=1.0)
+    acc = np.array([s.accel for _, s in ctl.calls[10:] if s.accel is not None])
+    assert np.abs(acc.mean(axis=0)).max() < 0.2  # biases only; no gravity in specific force
+    first = ctl.calls[0][1]
+    assert first.gps_pos is None  # 150 ms latency: nothing delivered yet

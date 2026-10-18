@@ -15,7 +15,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S04 | Environment and aerodynamics | done | S03 | 2026-10-18 | environment (gravity, ISA `atmosphere`->Atmosphere, pressure_to_altitude, Wind, Environment), aero_loads, `vehicle_derivative(t,x,cmd,cfg,env=None,env_force_I,env_torque_B)`. Sim loop (S06) must call `env.wind.advance(dt)` per step. Reviewed: PASS (round 2) |
 | S05 | Ground contact and events | done | S04 | 2026-10-18 | contact_loads -> ContactOutput (incl. base_strike); vehicle_derivative(..., info=None) always applies contact; sim/events.py (Outcome, EventState, check_events, EventMonitor); thresholds in SimConfig. S06 must run EventMonitor each step. Reviewed: PASS (round 1) |
 | S06 | Simulation engine, logging, delays | done | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Reviewed: PASS (round 1) |
-| S07 | Sensor models | todo | S06 | - | |
+| S07 | Sensor models | done | S06 | 2026-10-18 | SensorsConfig (imu/baro/gps/lidar), sensors/{imu,baro,gps,lidar,suite}.py, `SensorSuite.sample/needs_info`, `info["specific_force_B"]`; `Simulation(perfect_state=False)` calls `controller.step(SensorData, t)`. Reviewed: PASS (round 1) |
 | S08 | Control interface and attitude controller | todo | S06 | - | |
 | S09 | Position cascade and mission state machine | todo | S08 | - | |
 | S10 | State estimator (EKF) | todo | S07, S09 | - | |
@@ -65,6 +65,11 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-18, S06: added `math3d.cross` (a faster `np.cross` replacement) and used it in dynamics; `np.cross` was ~45% of run time. `OpenLoopController(command=None, schedule=None, default=None)`.
 - 2026-10-18, S06: measured speed is ~1300 physics steps/s (default vehicle, aero on, contact evaluated each stage); a 10 s run takes ~7.5 s, inside the step's 10 s bound. Remaining cost is small-array numpy overhead in the dynamics.
 
+- 2026-10-18, S07: sensor config is SI/rad (YAML cannot compute `radians`); bias model: gyro/accel initial bias ~ N(0, `*_bias_init`) per axis plus a random walk `*_bias_rw` (gyro default = 5 deg/h / 60, so it drifts by the init value in 1 h). The step gave only "bias instability" so the split is mine. Noise sigma = density * sqrt(rate) per the step.
+- 2026-10-18, S07: `SensorSuite.sample(t, x, info=None)` must be called every physics step and returns only what was delivered in that call; the engine keeps the newest sample per field until the next controller call. `needs_info(t)` tells the engine when the IMU is due so it evaluates `vehicle_derivative(..., info=)` (one extra derivative call) only then. `info["specific_force_B"]` is added to `vehicle_derivative`; gravity is now added after it is computed.
+- 2026-10-18, S07: baro and lidar measure from CoM height (z of the CoM), not the base; lidar mount offset `mount_b` defaults to the CoM. GPS outage windows and dropouts are in sample time; the GPS rng always draws so streams don't depend on dropouts. Sensor rng children come from `rng.spawn(4)` in fixed order imu, baro, gps, lidar.
+- 2026-10-18, S07: removed the S06 test that `perfect_state=False` raises NotImplementedError; `test_default_yaml_sensors_match_model_defaults` replaced the empty-placeholder config test.
+
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
@@ -77,6 +82,8 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 - S05 review suggestions: confirm the V_EPS = 0.05 deviation is acceptable; mention the SimConfig thresholds and `info` hook in CONVENTIONS.md; implement `FLAMEOUT_FALLING` detection when its rule is defined.
 - S06 speed: ~1300 steps/s is slow for Monte Carlo. Options: scalar/float fast paths in `contact_loads`, `propulsion`, `rigid_body_derivative`; skip contact when well above the ground; reuse the k1 evaluation for events.
 - S06 review suggestions: speed test (<10 s) may be flaky on a loaded machine; move the `integrate` import in `test_command_is_constant_across_rk4_stages` to module level; test that `_build_controller_input` is called once per controller call.
+
+- S07 review suggestions: `_Channel` queue stores `sample_t` but nothing reads it (internal, unused); `specific_force_B` includes `env_force_I` hooks (mention in vehicle docstring); one extra derivative call per IMU tick costs speed.
 
 ## Session log
 
@@ -91,3 +98,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-18, S04, todo -> done: environment.py, aero.py, vehicle_derivative takes `env`; 164 tests. Reviewed: PASS (round 2; round 1 failed on unpinned aero torque in vehicle_derivative and unlogged decisions). Next: S05.
 - 2026-10-18, S05, todo -> done: contact.py, events.py, SimConfig thresholds, 30 new tests (194 total). Reviewed: PASS (round 1). Friction V_EPS widened to 0.05 m/s for RK4 stability at dt = 1 ms (see Decisions). Next: S06 (call `EventMonitor.update` every step and `env.wind.advance(dt)`).
 - 2026-10-18, S06, in_progress: simulation engine, logger, OpenLoopController, run_scenario.py, 29 new tests (223 total). Speed ~1300 steps/s. Reviewed: PASS (round 1). Status -> done. Next: S07 (use the `_build_controller_input` seam in `Simulation`).
+- 2026-10-18, S07, todo -> done: sensor models, suite, engine sensor path, accel/gyro/baro/GPS/lidar tests (~26 new). Reviewed: PASS (round 1). Next: S08 (controller) or S12; S10 needs S07 + S09. Controllers get `SensorData` via `step()` when `perfect_state=False`.

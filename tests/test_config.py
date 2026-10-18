@@ -44,8 +44,12 @@ def test_default_vehicle_geometry_is_self_consistent():
     assert v.engine.gimbal_max == pytest.approx(8 * 3.141592653589793 / 180, abs=1e-3)
 
 
-def test_sensors_group_is_an_empty_placeholder():
-    assert cfg.load_vehicle(DEFAULT).sensors.model_dump() == {}
+def test_default_yaml_sensors_match_model_defaults():
+    got = cfg.load_vehicle(DEFAULT).sensors
+    want = cfg.SensorsConfig()
+    for name in ("imu", "baro", "gps", "lidar"):
+        a, b = getattr(got, name).model_dump(), getattr(want, name).model_dump()
+        assert a == pytest.approx(b, rel=1e-6), name
 
 
 def test_loaded_config_round_trips_through_dump():

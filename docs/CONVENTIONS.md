@@ -115,7 +115,7 @@ Models are frozen and reject unknown keys. `make_state` renormalises the quatern
 - `rcs`: `max_roll_torque`
 - `legs`: `count`, `radius` (foot circle), `length`, `stiffness`, `damping`, `friction`
 - `aero`: `cd_axial`, `cd_lateral`, `area_axial`, `area_lateral`, `cp_z`
-- `sensors`: filled in S07
+- `sensors`: `imu`, `baro`, `gps`, `lidar` groups (rate, latency, noise, range; SI units, rad). `SensorData.t` is the controller call time; samples carry sensor latency; `baro_alt` and `lidar_range` are relative to the CoM height. `vehicle_derivative`'s `info` dict also returns `specific_force_B`.
 - `sim`: `dt` (default 0.001), `controller_rate`, `max_time`, and outcome thresholds (`v_crash`, `crash_tilt`, `tipover_tilt`, `land_*`, `max_range`, `max_alt`; see `hopper.sim.events`)
 
 Placeholder vehicle for tests: ~100 kg total (80 kg dry + 20 kg propellant), thrust_max 2500 N,
