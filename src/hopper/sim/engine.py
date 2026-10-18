@@ -15,11 +15,13 @@ from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import MassProperties, mass_properties
 from hopper.dynamics.propulsion import propulsion
 from hopper.dynamics.vehicle import vehicle_derivative
+from hopper.sensors.suite import SensorSuite
 from hopper.sim.events import EventMonitor, Outcome
 from hopper.sim.integrator import rk4_step
-from hopper.types import OMEGA, POS, PROP, QUAT, VEL, Command, StateEstimate
+from hopper.types import OMEGA, POS, PROP, QUAT, VEL, Command, SensorData, StateEstimate
 
 ENGINE_OFF = Command(0.0, np.zeros(2), 0.0)
+_SENSOR_FIELDS = ("gyro", "accel", "baro_alt", "gps_pos", "gps_vel", "lidar_range")
 
 
 @dataclass
@@ -65,20 +67,36 @@ class Simulation:
         self.log_decimation = log_decimation
         self.seed = _seed_of(rng)
         env.wind.reset(int(rng.integers(2**32)))
+        self.sensors = None if perfect_state else SensorSuite(cfg, rng)
+        self._latest: dict[
+            str, object
+        ] = {}  # newest delivered sample per field since the last call
+
+    def _sense(self, t: float, x: np.ndarray, cmd: Command) -> None:
+        """Advance the sensors one physics step and keep the newest sample per field."""
+        info: dict = {}
+        if self.sensors.needs_info(t):
+            vehicle_derivative(t, x, cmd, self.cfg, self.env, info=info)
+        data = self.sensors.sample(t, x, info)
+        for name in _SENSOR_FIELDS:
+            if (v := getattr(data, name)) is not None:
+                self._latest[name] = v
 
     def _build_controller_input(self, t: float, x: np.ndarray, mp: MassProperties):
-        """Seam for the sensor path (S07) and EKF (S10)."""
+        """Seam for the estimator (S10): true state, or the sensor samples since the last call."""
         if not self.perfect_state:
-            raise NotImplementedError(
-                "sensor/estimator input arrives in S07 (sensors) and S10 (EKF)"
-            )
+            data = SensorData(t, **{f: self._latest.get(f) for f in _SENSOR_FIELDS})
+            self._latest = {}
+            return data
         return StateEstimate(
             t, x[POS].copy(), x[VEL].copy(), x[QUAT].copy(), x[OMEGA].copy(), mp.mass
         )
 
     def _call_controller(self, t: float, x: np.ndarray, mp: MassProperties) -> Command:
         inp = self._build_controller_input(t, x, mp)
-        return self.controller.step_state(inp, t)
+        if self.perfect_state:
+            return self.controller.step_state(inp, t)
+        return self.controller.step(inp, t)
 
     def run(self, t_end: float | None = None) -> SimResult:
         cfg, dt = self.cfg, self.cfg.sim.dt
@@ -100,6 +118,8 @@ class Simulation:
             contact = contact_loads(x, mp, cfg.legs)
             event = monitor.update(t, x, contact)
             done = event is not None or (n_max is not None and k >= n_max)
+            if self.sensors is not None and not done:
+                self._sense(t, x, applied)
             if not done and k % ctrl_every == 0:
                 pending.append((k + delay_steps, self._call_controller(t, x, mp)))
             while pending and pending[0][0] <= k:

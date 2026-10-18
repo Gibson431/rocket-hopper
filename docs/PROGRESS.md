@@ -15,7 +15,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S04 | Environment and aerodynamics | done | S03 | 2026-10-18 | environment (gravity, ISA `atmosphere`->Atmosphere, pressure_to_altitude, Wind, Environment), aero_loads, `vehicle_derivative(t,x,cmd,cfg,env=None,env_force_I,env_torque_B)`. Sim loop (S06) must call `env.wind.advance(dt)` per step. Reviewed: PASS (round 2) |
 | S05 | Ground contact and events | done | S04 | 2026-10-18 | contact_loads -> ContactOutput (incl. base_strike); vehicle_derivative(..., info=None) always applies contact; sim/events.py (Outcome, EventState, check_events, EventMonitor); thresholds in SimConfig. S06 must run EventMonitor each step. Reviewed: PASS (round 1) |
 | S06 | Simulation engine, logging, delays | done | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Reviewed: PASS (round 1) |
-| S07 | Sensor models | todo | S06 | - | |
+| S07 | Sensor models | in_progress | S06 | 2026-10-18 | |
 | S08 | Control interface and attitude controller | todo | S06 | - | |
 | S09 | Position cascade and mission state machine | todo | S08 | - | |
 | S10 | State estimator (EKF) | todo | S07, S09 | - | |
@@ -64,6 +64,11 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-18, S06: log `event` column is `""` except on the terminal row (outcome name); the terminal row is always kept under decimation. Metadata (seed, config hash = first 16 hex of sha256 of `model_dump_json`) is in `df.attrs` and the parquet file metadata. Extra API: `Logger(decimation, metadata)`, `Logger.wants_row()`, module `save_frame(df, path)`, `Logger.load(path)` (static, returns the frame), `Simulation(..., log_decimation=1)`.
 - 2026-10-18, S06: added `math3d.cross` (a faster `np.cross` replacement) and used it in dynamics; `np.cross` was ~45% of run time. `OpenLoopController(command=None, schedule=None, default=None)`.
 - 2026-10-18, S06: measured speed is ~1300 physics steps/s (default vehicle, aero on, contact evaluated each stage); a 10 s run takes ~7.5 s, inside the step's 10 s bound. Remaining cost is small-array numpy overhead in the dynamics.
+
+- 2026-10-18, S07: sensor config is SI/rad (YAML cannot compute `radians`); bias model: gyro/accel initial bias ~ N(0, `*_bias_init`) per axis plus a random walk `*_bias_rw` (gyro default = 5 deg/h / 60, so it drifts by the init value in 1 h). The step gave only "bias instability" so the split is mine. Noise sigma = density * sqrt(rate) per the step.
+- 2026-10-18, S07: `SensorSuite.sample(t, x, info=None)` must be called every physics step and returns only what was delivered in that call; the engine keeps the newest sample per field until the next controller call. `needs_info(t)` tells the engine when the IMU is due so it evaluates `vehicle_derivative(..., info=)` (one extra derivative call) only then. `info["specific_force_B"]` is added to `vehicle_derivative`; gravity is now added after it is computed.
+- 2026-10-18, S07: baro and lidar measure from CoM height (z of the CoM), not the base; lidar mount offset `mount_b` defaults to the CoM. GPS outage windows and dropouts are in sample time; the GPS rng always draws so streams don't depend on dropouts. Sensor rng children come from `rng.spawn(4)` in fixed order imu, baro, gps, lidar.
+- 2026-10-18, S07: removed the S06 test that `perfect_state=False` raises NotImplementedError; `test_default_yaml_sensors_match_model_defaults` replaced the empty-placeholder config test.
 
 ## Backlog
 

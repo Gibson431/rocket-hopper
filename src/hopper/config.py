@@ -60,8 +60,54 @@ class AeroConfig(_Model):
     cp_z: float  # above the base
 
 
+class ImuConfig(_Model):
+    rate: Pos = 400.0  # Hz
+    latency: NonNeg = 0.002  # s
+    gyro_noise_density: NonNeg = radians(0.005)  # rad/s/sqrt(Hz)
+    gyro_bias_init: NonNeg = radians(5.0) / 3600.0  # rad/s, 1-sigma per axis (5 deg/h)
+    gyro_bias_rw: NonNeg = (
+        radians(5.0) / 3600.0 / 60.0
+    )  # rad/s/sqrt(s): drifts by the init value in 1 h
+    gyro_range: Pos = radians(2000.0)  # rad/s
+    accel_noise_density: NonNeg = 100e-6 * 9.80665  # m/s^2/sqrt(Hz) (100 ug)
+    accel_bias_init: NonNeg = 0.02  # m/s^2, 1-sigma per axis
+    accel_bias_rw: NonNeg = 1e-4  # m/s^2/sqrt(s)
+    accel_range: Pos = 16 * 9.80665  # m/s^2
+
+
+class BaroConfig(_Model):
+    rate: Pos = 50.0
+    latency: NonNeg = 0.02
+    noise_sigma: NonNeg = 0.5  # m
+    bias_rw: NonNeg = 0.05  # m/sqrt(s)
+
+
+class GpsConfig(_Model):
+    rate: Pos = 10.0
+    latency: NonNeg = 0.15
+    pos_sigma_h: NonNeg = 0.5  # m, east and north
+    pos_sigma_v: NonNeg = 1.0  # m
+    vel_sigma: NonNeg = 0.05  # m/s per axis
+    dropout_prob: Annotated[float, Field(ge=0, le=1)] = 0.0  # per sample
+    outages: tuple[tuple[float, float], ...] = ()  # (start, end) sample-time windows, s
+
+
+class LidarConfig(_Model):
+    rate: Pos = 50.0
+    latency: NonNeg = 0.01
+    min_range: Pos = 0.2  # m
+    max_range: Pos = 40.0  # m
+    sigma_abs: NonNeg = 0.02  # m
+    sigma_rel: NonNeg = 0.001  # fraction of range
+    max_tilt: Pos = radians(60.0)  # ray misses the ground beyond this angle from vertical
+    mount_b: tuple[float, float, float] = (0.0, 0.0, 0.0)  # from the CoM, body frame, m
+
+
 class SensorsConfig(_Model):
-    """Placeholder; filled in S07."""
+    imu: ImuConfig = ImuConfig()
+    baro: BaroConfig = BaroConfig()
+    gps: GpsConfig = GpsConfig()
+    lidar: LidarConfig = LidarConfig()
 
 
 class SimConfig(_Model):

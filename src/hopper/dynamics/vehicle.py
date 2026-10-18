@@ -4,7 +4,8 @@
 `env` is an `Environment` (wind, `gravity_enabled`, `aero_enabled`; `None` means
 `Environment.default()`).
 Leg/ground contact is always included; if `info` is a dict it receives the `ContactOutput` under
-`"contact"` so the logger need not recompute it. The extra force/torque hooks are for other loads.
+`"contact"` and the accelerometer input under `"specific_force_B"` (non-gravitational force / mass,
+body frame). The extra force/torque hooks are for other loads.
 The sim loop must call `env.wind.advance(dt)` once per step; wind is read-only inside RK4 stages.
 """
 
@@ -17,7 +18,7 @@ from hopper.dynamics.environment import Environment, atmosphere, gravity
 from hopper.dynamics.mass_model import mass_properties
 from hopper.dynamics.propulsion import propulsion
 from hopper.dynamics.rigid_body import rigid_body_derivative
-from hopper.math3d import quat_rotate
+from hopper.math3d import quat_rotate, quat_rotate_inv
 from hopper.types import POS, PROP, QUAT, VEL, Command
 
 
@@ -45,8 +46,6 @@ def vehicle_derivative(
     env = env or Environment.default()
     force_i = quat_rotate(x[QUAT], p.force_B)
     torque_b = p.torque_B
-    if env.gravity_enabled:
-        force_i = force_i + mp.mass * gravity(x[POS])
     if env.aero_enabled:
         rho = atmosphere(x[POS][2]).density
         wind = env.wind.velocity(t, x[POS])
@@ -56,12 +55,16 @@ def vehicle_derivative(
     contact = contact_loads(x, mp, cfg.legs)
     force_i = force_i + contact.force_I
     torque_b = torque_b + contact.torque_B
-    if info is not None:
-        info["contact"] = contact
     if env_force_I is not None:
         force_i = force_i + env_force_I
     if env_torque_B is not None:
         torque_b = torque_b + env_torque_B
+    if info is not None:
+        info["contact"] = contact
+        # What an accelerometer feels: every force except gravity, per unit mass, in body axes.
+        info["specific_force_B"] = quat_rotate_inv(x[QUAT], force_i) / mp.mass
+    if env.gravity_enabled:
+        force_i = force_i + mp.mass * gravity(x[POS])
 
     xd = rigid_body_derivative(x, mp.mass, mp.inertia, force_i, torque_b)
     # Rigid-body part leaves the actuator slots at 0, so the sum merges the two.
