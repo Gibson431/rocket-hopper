@@ -19,6 +19,11 @@ class ControlParams:
     tank_bottom_z: float
     tank_height: float
     tank_radius: float
+    leg_length: float  # foot tips hang this far below the base
+
+    def foot_height(self, mass: float, z_com: float) -> float:
+        """Height of the foot tips above the ground for a CoM at `z_com` (upright vehicle)."""
+        return z_com - self.mass_properties(mass)[0] - self.leg_length
 
     def mass_properties(self, mass: float) -> tuple[float, np.ndarray]:
         """CoM height above the base and diagonal inertia for an estimated total mass.

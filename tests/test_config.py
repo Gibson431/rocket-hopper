@@ -24,7 +24,7 @@ def test_default_yaml_loads_into_a_vehicle_config():
     assert isinstance(v, cfg.VehicleConfig)
     assert v.mass.dry_mass + v.tank.prop_mass_initial == pytest.approx(100.0)
     assert v.engine.thrust_max == 2500.0
-    assert v.engine.thrust_min_frac == 0.4
+    assert v.engine.thrust_min_frac == 0.3
     assert v.legs.count == 4
     assert v.legs.radius == 0.6
     assert v.sim.dt == 0.001
