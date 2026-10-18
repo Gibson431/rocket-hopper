@@ -77,13 +77,14 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 
 - S01 review suggestions (also: remove duplicate assertion in geometry test): test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it.
 - S02 review suggestions: pin the callback's final time == t1 exactly for a non-divisible span; tighten the RK4 exponential-decay test tolerance to ~1e-7; hypothesis test over spans/dts for step count.
-- S03 review suggestions: amend S03 step text (CoM is not monotonic over the full burn); add negative-side and gy-axis cases for the gimbal angle/rate-limit tests; test propellant crossing zero mid-burn; decide where to validate `Command` ranges (propulsion clamps for now).
+- S03 review suggestions: amend S03 step text (CoM is not monotonic over the full burn); add negative-side and gy-axis cases for the gimbal angle/rate-limit tests; test propellant crossing zero mid-burn.
 - S04 review suggestions: test simultaneous vehicle motion plus wind in `aero_loads`; check `Wind.advance` stays a no-op with sigma 0 across a reset.; add a direct hand-computed mixed axial+lateral `aero_loads` test and a tilted-vehicle cross-flow torque test.
 - S05 review suggestions: confirm the V_EPS = 0.05 deviation is acceptable; implement `FLAMEOUT_FALLING` detection when its rule is defined.
 - S06 speed: still slow for Monte Carlo. Done: `contact_loads` early exit above the vehicle's reach. Remaining: scalar/float fast paths in `propulsion`, `rigid_body_derivative`; reuse the k1 evaluation for events.
 - S06 review suggestions: move the `integrate` import in `test_command_is_constant_across_rk4_stages` to module level; test that `_build_controller_input` is called once per controller call.
 
 - S07 review suggestions: `_Channel` queue stores `sample_t` but nothing reads it (internal, unused); `specific_force_B` includes `env_force_I` hooks (mention in vehicle docstring); one extra derivative call per IMU tick costs speed.
+- Backlog-hardening review suggestions: strengthen `test_early_exit_agrees_with_full_computation_near_the_bound` (tilted vehicle just below `reach` with a foot touching must give nonzero loads); test `-inf` and NaN in gimbal[1] for `Command`.
 
 ## Session log
 
@@ -99,3 +100,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-18, S05, todo -> done: contact.py, events.py, SimConfig thresholds, 30 new tests (194 total). Reviewed: PASS (round 1). Friction V_EPS widened to 0.05 m/s for RK4 stability at dt = 1 ms (see Decisions). Next: S06 (call `EventMonitor.update` every step and `env.wind.advance(dt)`).
 - 2026-10-18, S06, in_progress: simulation engine, logger, OpenLoopController, run_scenario.py, 29 new tests (223 total). Speed ~1300 steps/s. Reviewed: PASS (round 1). Status -> done. Next: S07 (use the `_build_controller_input` seam in `Simulation`).
 - 2026-10-18, S07, todo -> done: sensor models, suite, engine sensor path, accel/gyro/baro/GPS/lidar tests (~26 new). Reviewed: PASS (round 1). Next: S08 (controller) or S12; S10 needs S07 + S09. Controllers get `SensorData` via `step()` when `perfect_state=False`.
+- 2026-10-18, backlog hardening (no step): finite `Command` check, `contact_loads` early exit, smoke/CPU-time tests, docs. Reviewed: PASS (round 1). 261 tests.
