@@ -16,7 +16,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S05 | Ground contact and events | done | S04 | 2026-10-18 | contact_loads -> ContactOutput (incl. base_strike); vehicle_derivative(..., info=None) always applies contact; sim/events.py (Outcome, EventState, check_events, EventMonitor); thresholds in SimConfig. S06 must run EventMonitor each step. Reviewed: PASS (round 1) |
 | S06 | Simulation engine, logging, delays | done | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Reviewed: PASS (round 1) |
 | S07 | Sensor models | done | S06 | 2026-10-18 | SensorsConfig (imu/baro/gps/lidar), sensors/{imu,baro,gps,lidar,suite}.py, `SensorSuite.sample/needs_info`, `info["specific_force_B"]`; `Simulation(perfect_state=False)` calls `controller.step(SensorData, t)`. Reviewed: PASS (round 1) |
-| S08 | Control interface and attitude controller | todo | S06 | - | |
+| S08 | Control interface and attitude controller | done | S06 | 2026-10-19 | AttitudeController/AttitudeGains/AttitudeOutput, ControlParams, scenario_glue.control_params_from_config, AttitudeHoldController (base for S09), scripts/tune_attitude.py. PD has no integral: aero torque offset grows with speed. Reviewed: PASS (round 2) |
 | S09 | Position cascade and mission state machine | todo | S08 | - | |
 | S10 | State estimator (EKF) | todo | S07, S09 | - | |
 | S11 | Scenarios, faults, Monte Carlo | todo | S09 | - | |
@@ -71,6 +71,13 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-18, S07: removed the S06 test that `perfect_state=False` raises NotImplementedError; `test_default_yaml_sensors_match_model_defaults` replaced the empty-placeholder config test.
 - 2026-10-18, backlog cleanup: `Command` rejects non-finite fields (range clamping stays in `propulsion`); `contact_loads` returns an empty result when z > hypot(leg radius, com_z + leg length) (exact, not an approximation); speed test uses CPU time.
 
+- 2026-10-19, S08: the bridge is the function `hopper.scenario_glue.control_params_from_config(cfg)`, not a `ControlParams.from_vehicle_config` classmethod (the control package may not import the config). `ControlParams` flattens the tank as `tank_bottom_z/height/radius` and has `mass_properties(mass) -> (com_z, inertia_diag)`, driven by estimated mass.
+- 2026-10-19, S08: torque-to-gimbal uses exact asin inverses of the propulsion model (not small-angle), so the inversion test holds to 1e-9. Thrust floor below which the gimbal is held at 0 is `0.5 * thrust_min_frac * thrust_max`; RCS roll still works then.
+- 2026-10-19, S08: default gains are wn = [3, 3, 1.5] rad/s, zeta = 0.8 (roll lower: RCS gives only ~2 rad/s^2). `AttitudeGains.from_bandwidth(wn, zeta)`: kp = wn^2, kd = 2 zeta wn, applied as angular acceleration times scheduled inertia.
+- 2026-10-19, S08: saturation scales both gimbal axes by the same factor (keeps torque direction) and the gimbal command is slew-limited to `gimbal_rate_max * dt` per controller call; this is the step's "back off when saturated". No integral term, so no windup. `AttitudeOutput` also carries `torque_des`, `saturated`, `error`.
+- 2026-10-19, S08: `AttitudeHoldController.step` (sensor mode) raises NotImplementedError; it needs the EKF (S10). It uses the commanded thrust fraction, not the lagged thrust.
+- 2026-10-19, S08: the 300 ms delay test asserts divergence. Measured: stable to 100 ms, ~16 deg tilt at 200 ms, ~70 deg at 300 ms (10 deg start). The pure PD loop has an aero-torque offset growing with speed (~2 deg at 10 s in a 5 deg pitch hold); S09 should add compensation.
+
 ## Backlog
 
 Out-of-scope ideas found while working. Do not do these inside another step.
@@ -85,6 +92,7 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 
 - S07 review suggestions: `_Channel` queue stores `sample_t` but nothing reads it (internal, unused); `specific_force_B` includes `env_force_I` hooks (mention in vehicle docstring); one extra derivative call per IMU tick costs speed.
 - Backlog-hardening review suggestions: strengthen `test_early_exit_agrees_with_full_computation_near_the_bound` (tilted vehicle just below `reach` with a foot touching must give nonzero loads); test `-inf` and NaN in gimbal[1] for `Command`.
+- S08 review suggestions: add ControlParams/control_params_from_config/AttitudeHoldController pointers to CONVENTIONS.md when S09 builds on them; direct per-axis overshoot check in the 10 degree test; tighten the 60 degree saturation test; allowlist-style import boundary test (only hopper.types, hopper.math3d); S09 needs integral or aero compensation for the attitude offset.
 
 ## Session log
 
@@ -101,3 +109,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-18, S06, in_progress: simulation engine, logger, OpenLoopController, run_scenario.py, 29 new tests (223 total). Speed ~1300 steps/s. Reviewed: PASS (round 1). Status -> done. Next: S07 (use the `_build_controller_input` seam in `Simulation`).
 - 2026-10-18, S07, todo -> done: sensor models, suite, engine sensor path, accel/gyro/baro/GPS/lidar tests (~26 new). Reviewed: PASS (round 1). Next: S08 (controller) or S12; S10 needs S07 + S09. Controllers get `SensorData` via `step()` when `perfect_state=False`.
 - 2026-10-18, backlog hardening (no step): finite `Command` check, `contact_loads` early exit, smoke/CPU-time tests, docs. Reviewed: PASS (round 1). 261 tests.
+- 2026-10-19, S08, todo -> done: attitude PD controller (gimbal + RCS roll), ControlParams, scenario_glue bridge, AttitudeHoldController, tune script, import-boundary test; 299 tests. Reviewed: PASS (round 2; round 1 failed on untested slew limit/CoM scheduling and unlogged decisions). Next: S09 builds on AttitudeHoldController/AttitudeController.
