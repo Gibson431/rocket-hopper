@@ -1,9 +1,10 @@
+import numpy as np
 import pandas as pd
 import pytest
 
-from hopper.analysis.logger import Logger
+from hopper.analysis.logger import COLUMNS, Logger
 from hopper.sim.events import Outcome
-from hopper.types import make_state
+from hopper.types import Command, make_state
 
 STATE_COLS = [
     *(f"pos_{a}" for a in "xyz"),
@@ -100,3 +101,27 @@ def test_parquet_round_trip_preserves_values_and_metadata(tmp_path):
     pd.testing.assert_frame_equal(df, lg.to_dataframe(), check_exact=True)
     assert df.attrs["seed"] == 7
     assert df.attrs["config_hash"] == "abc123"
+
+
+def test_extra_columns_are_logged_between_the_scalars_and_the_event():
+    log = Logger(extra_columns=("a", "b"))
+    x = np.zeros(19)
+    log.log(0.0, x, 1.0, 0.0, Command(0.0, np.zeros(2), 0.0), 0.0, 0, extra=[1.0, 2.0])
+    log.log(0.1, x, 1.0, 0.0, Command(0.0, np.zeros(2), 0.0), 0.0, 0, extra=[3.0, 4.0])
+    df = log.to_dataframe()
+    assert list(df.columns[-3:]) == ["a", "b", "event"]
+    assert df["b"].tolist() == [2.0, 4.0]
+
+
+def test_logger_without_extra_columns_is_unchanged():
+    log = Logger()
+    log.log(0.0, np.zeros(19), 1.0, 0.0, Command(0.0, np.zeros(2), 0.0), 0.0, 0)
+    assert list(log.to_dataframe().columns) == COLUMNS
+
+
+def test_extra_values_must_match_the_declared_columns():
+    log = Logger(extra_columns=("a",))
+    with pytest.raises(ValueError):
+        log.log(
+            0.0, np.zeros(19), 1.0, 0.0, Command(0.0, np.zeros(2), 0.0), 0.0, 0, extra=[1.0, 2.0]
+        )

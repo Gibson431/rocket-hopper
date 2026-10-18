@@ -132,6 +132,21 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
   `MissionController` (state machine + `PositionController`). All are perfect-state
   (`step_state`) until S10 adds the estimator.
 
+## Estimation package (`hopper.estimation`)
+
+- Flight software like `hopper.control`: it may import only `hopper.types` and `hopper.math3d`
+  (enforced by `tests/estimation/test_estimation_boundary.py`).
+- `EKF(EkfParams)` is an error-state filter (16 states: dp, dv, dtheta, dbg, dba, dbaro; definitions in the
+  `ekf.py` docstring). `EkfParams` is built from the sensor config by
+  `hopper.scenario_glue.ekf_params_from_config`. `EKF.process(SensorData, grounded=False)` returns a
+  `StateEstimate` (None until the 1 s static alignment is done). Mass comes from
+  `PropellantEstimator` (dead-reckoned from `EKF.note_command`).
+- `hopper.estimated_controller.EstimatedController(ekf_params, mission)` is the `Controller` that runs
+  sensors -> EKF -> `MissionController.step_state`; the engine stays off until the filter is aligned.
+- Optional controller log hook: a controller with `log_columns` (tuple of names) and `log_values()`
+  gets those columns appended to the sim log (before `event`); `EstimatedController` logs `est_*` and
+  `sig_*` (16 one-sigma values, error-state order).
+
 ## Randomness
 
 `numpy.random.Generator` passed explicitly (`rng`). Never use the global numpy RNG. Seeds are

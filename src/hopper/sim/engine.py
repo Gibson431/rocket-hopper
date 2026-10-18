@@ -104,7 +104,11 @@ class Simulation:
         delay_steps = round(self.command_delay / dt)
         n_max = int(np.ceil(t_end / dt - 1e-9)) if t_end is not None else None
 
-        logger = Logger(self.log_decimation, {"seed": self.seed, "config_hash": config_hash(cfg)})
+        # A controller may expose `log_columns` and `log_values()` (e.g. its state estimate).
+        extra_cols = tuple(getattr(self.controller, "log_columns", ()))
+        logger = Logger(
+            self.log_decimation, {"seed": self.seed, "config_hash": config_hash(cfg)}, extra_cols
+        )
         monitor = EventMonitor(cfg)
         self.controller.reset()
         x = self.x0.copy()
@@ -125,11 +129,8 @@ class Simulation:
             while pending and pending[0][0] <= k:
                 applied = pending.popleft()[1]
 
-            thrust = (
-                float(np.linalg.norm(propulsion(x, applied, cfg, mp).force_B))
-                if event is not None or done or logger.wants_row()
-                else 0.0
-            )
+            keep = event is not None or done or logger.wants_row()
+            thrust = float(np.linalg.norm(propulsion(x, applied, cfg, mp).force_B)) if keep else 0.0
             logger.log(
                 t,
                 x,
@@ -139,6 +140,9 @@ class Simulation:
                 float(contact.foot_forces.sum()),
                 int(np.count_nonzero(contact.foot_forces > 0.0)),
                 event if done else None,
+                self.controller.log_values()
+                if extra_cols and keep
+                else (np.nan,) * len(extra_cols),
             )
             if done:
                 if event is not None:
