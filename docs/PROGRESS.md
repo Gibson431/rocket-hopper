@@ -14,7 +14,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S03 | Mass model and propulsion | done | S02 | 2026-10-17 | mass_properties; propulsion -> PropulsionOutput; vehicle_derivative(t,x,cmd,cfg,env_force_I,env_torque_B,g); S04 replaced `g` with `env` (see S04 row). S05 adds contact via the env_force_I/env_torque_B hooks. Reviewed: PASS (round 2) |
 | S04 | Environment and aerodynamics | done | S03 | 2026-10-18 | environment (gravity, ISA `atmosphere`->Atmosphere, pressure_to_altitude, Wind, Environment), aero_loads, `vehicle_derivative(t,x,cmd,cfg,env=None,env_force_I,env_torque_B)`. Sim loop (S06) must call `env.wind.advance(dt)` per step. Reviewed: PASS (round 2) |
 | S05 | Ground contact and events | done | S04 | 2026-10-18 | contact_loads -> ContactOutput (incl. base_strike); vehicle_derivative(..., info=None) always applies contact; sim/events.py (Outcome, EventState, check_events, EventMonitor); thresholds in SimConfig. S06 must run EventMonitor each step. Reviewed: PASS (round 1) |
-| S06 | Simulation engine, logging, delays | in_progress | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Awaiting review |
+| S06 | Simulation engine, logging, delays | done | S05 | 2026-10-18 | Simulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation).run(t_end) -> SimResult; Logger/save_frame/load; OpenLoopController; math3d.cross. Speed ~1300 steps/s (10 s run ~7.5 s). Reviewed: PASS (round 1) |
 | S07 | Sensor models | todo | S06 | - | |
 | S08 | Control interface and attitude controller | todo | S06 | - | |
 | S09 | Position cascade and mission state machine | todo | S08 | - | |
@@ -76,6 +76,7 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 - S04 review suggestions: test simultaneous vehicle motion plus wind in `aero_loads`; check `Wind.advance` stays a no-op with sigma 0 across a reset.; add a direct hand-computed mixed axial+lateral `aero_loads` test and a tilted-vehicle cross-flow torque test.
 - S05 review suggestions: confirm the V_EPS = 0.05 deviation is acceptable; mention the SimConfig thresholds and `info` hook in CONVENTIONS.md; implement `FLAMEOUT_FALLING` detection when its rule is defined.
 - S06 speed: ~1300 steps/s is slow for Monte Carlo. Options: scalar/float fast paths in `contact_loads`, `propulsion`, `rigid_body_derivative`; skip contact when well above the ground; reuse the k1 evaluation for events.
+- S06 review suggestions: speed test (<10 s) may be flaky on a loaded machine; move the `integrate` import in `test_command_is_constant_across_rk4_stages` to module level; test that `_build_controller_input` is called once per controller call.
 
 ## Session log
 
@@ -89,4 +90,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-17, S03, todo -> done: mass_properties, propulsion (PropulsionOutput), vehicle_derivative with env hooks and `g` kwarg, 133 tests total. Reviewed: PASS (round 2; round 1 failed on unpinned gimbal damping and a placeholder note). CoM dips early in the burn (see Decisions). Next: S04.
 - 2026-10-18, S04, todo -> done: environment.py, aero.py, vehicle_derivative takes `env`; 164 tests. Reviewed: PASS (round 2; round 1 failed on unpinned aero torque in vehicle_derivative and unlogged decisions). Next: S05.
 - 2026-10-18, S05, todo -> done: contact.py, events.py, SimConfig thresholds, 30 new tests (194 total). Reviewed: PASS (round 1). Friction V_EPS widened to 0.05 m/s for RK4 stability at dt = 1 ms (see Decisions). Next: S06 (call `EventMonitor.update` every step and `env.wind.advance(dt)`).
-- 2026-10-18, S06, in_progress: simulation engine, logger, OpenLoopController, run_scenario.py, 29 new tests (223 total). Speed ~1300 steps/s. Next: review.
+- 2026-10-18, S06, in_progress: simulation engine, logger, OpenLoopController, run_scenario.py, 29 new tests (223 total). Speed ~1300 steps/s. Reviewed: PASS (round 1). Status -> done. Next: S07 (use the `_build_controller_input` seam in `Simulation`).
