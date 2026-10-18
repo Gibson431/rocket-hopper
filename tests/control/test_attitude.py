@@ -258,3 +258,49 @@ def test_closed_loop_60_degree_tilt_saturates_without_nan_or_chatter(cfg, params
     sign_changes = (np.diff(np.sign(log["cmd_gim_x"].to_numpy())) != 0).sum()
     assert sign_changes <= 6
     assert tilt_deg(log)[-1] < tilt_deg(log)[0]
+
+
+# --- slew limit, reset, CoM scheduling in the hold controller --------------------------------
+
+
+def test_gimbal_command_change_per_call_obeys_the_actuator_rate_limit(ctrl, params):
+    dt = 0.01
+    m = params.dry_mass + PROP_MASS
+    com_z = params.mass_properties(m)[0]
+    ctrl.update(IDENTITY, ZERO3, IDENTITY, ZERO3, 1000.0, m, com_z, dt)
+    q = quat_from_axis_angle([1, 0, 0], -np.radians(20))
+    first = ctrl.update(IDENTITY, ZERO3, q, ZERO3, 1000.0, m, com_z, dt)
+    assert np.max(np.abs(first.gimbal)) == pytest.approx(params.gimbal_rate_max * dt)
+
+
+def test_reset_clears_the_slew_limit_memory(ctrl, params):
+    m = params.dry_mass + PROP_MASS
+    com_z = params.mass_properties(m)[0]
+    q = quat_from_axis_angle([1, 0, 0], -np.radians(20))
+    ctrl.update(IDENTITY, ZERO3, IDENTITY, ZERO3, 1000.0, m, com_z, 0.01)
+    ctrl.reset()
+    out = ctrl.update(IDENTITY, ZERO3, q, ZERO3, 1000.0, m, com_z, 0.01)
+    assert np.max(np.abs(out.gimbal)) > params.gimbal_rate_max * 0.01 * 2
+
+
+def test_hold_controller_uses_the_center_of_mass_for_the_estimated_mass(cfg, params, gains):
+    from hopper.types import StateEstimate
+
+    mass = params.dry_mass + params.prop_mass_initial
+    q = quat_from_axis_angle([1, 0, 0], -np.radians(2))
+    est = StateEstimate(0.0, ZERO3, ZERO3, q, ZERO3, mass)
+    hold = AttitudeHoldController(params, gains, throttle=0.5)
+    cmd = hold.step_state(est, 0.0)
+
+    ref = AttitudeController(params, gains)
+    com_z = params.mass_properties(mass)[0]
+    assert com_z != pytest.approx(params.dry_com_z, rel=0.01)
+    want = ref.update(IDENTITY, ZERO3, q, ZERO3, 0.5 * params.thrust_max, mass, com_z, 0.0)
+    assert np.allclose(cmd.gimbal, want.gimbal, rtol=1e-12)
+
+
+def test_saturated_flag_is_set_when_roll_torque_exceeds_the_rcs(ctrl, params):
+    q = quat_from_axis_angle([0, 0, 1], -np.radians(90))
+    out = update(ctrl, params, q=q)
+    assert out.saturated
+    assert np.all(out.gimbal == 0.0)
