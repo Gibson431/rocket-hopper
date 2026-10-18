@@ -303,3 +303,16 @@ def test_default_config_values():
     assert c.gps.latency == 0.15 and c.lidar.max_range == 40.0 and c.lidar.min_range == 0.2
     assert c.imu.gyro_noise_density == pytest.approx(np.radians(0.005))
     assert c.imu.accel_range == pytest.approx(16 * G)
+
+
+def test_accel_bias_random_walk_variance_grows_linearly(cfg):
+    s = quiet(imu={"accel_bias_rw": 1e-2, "rate": 100.0})
+    var = {}
+    for span in (2.0, 4.0):
+        ends = [
+            stack(run(make_suite(cfg, s, k), hover(), span), "accel")[-1] - [0, 0, G]
+            for k in range(300)
+        ]
+        var[span] = np.var(np.array(ends), axis=0).mean()
+    assert var[2.0] == pytest.approx(1e-4 * 2.0, rel=0.25)
+    assert var[4.0] / var[2.0] == pytest.approx(2.0, rel=0.25)
