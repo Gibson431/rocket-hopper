@@ -3,7 +3,7 @@ from pathlib import Path
 
 import hopper.control
 
-FORBIDDEN = ("hopper.dynamics", "hopper.sim", "hopper.sensors")
+FORBIDDEN = ("hopper.dynamics", "hopper.sim", "hopper.sensors", "hopper.drake", "pydrake")
 
 
 def _imports(path: Path) -> list[str]:

@@ -37,3 +37,6 @@ select = ["E", "F", "I", "UP", "B", "N"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Default run is the fast unit set. Full suite: `uv run pytest -m ""`; only slow: `-m regression`.
+addopts = '-m "not regression"'
+markers = ["regression: full closed-loop hops and Monte Carlo runs (minutes); deselected by default"]

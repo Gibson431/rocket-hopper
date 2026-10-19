@@ -161,6 +161,19 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
   from `run_seeds(base_seed, n)`; a seed fixes dispersions, noise and gusts, so
   `scripts/run_scenario.py <scenario> --seed S --dispersed` reproduces run S exactly.
 
+## Drake package (`hopper.drake`, S14+)
+
+- Simulation side only; `hopper.control`, `hopper.estimation`, `hopper.types`, `hopper.math3d` never import it
+  or `pydrake` (tests enforce this). Decisions are in `docs/DRAKE_DESIGN.md`.
+- `plant.build_vehicle_plant(cfg, builder=None, finalize=True) -> (plant, scene_graph)`: one floating body
+  `"hopper"`, continuous, gravity 9.80665. `sim.make_simulator(diagram, dt=1e-3)`: fixed-step RK3.
+- **Body-frame rule:** the Drake body origin is the gimbal pivot (base), not the CoM. The legacy state is
+  the CoM with the rate in the body frame; Drake holds origin position/velocity and a world-frame rate.
+  `state.to_legacy_state(plant, ctx)` / `set_legacy_state(plant, ctx, x, cfg)` convert (CoM offset read from
+  the spatial inertia in the context; quaternion returned with w >= 0; PROP/THR/GIM/GIMR are 0, owned by other systems).
+- `mass.MassUpdater(plant, cfg).update(ctx, prop)` writes the full spatial inertia between `AdvanceTo` steps
+  and keeps the CoM position/velocity continuous. The caller passes the step-midpoint propellant mass.
+
 ## Randomness
 
 `numpy.random.Generator` passed explicitly (`rng`). Never use the global numpy RNG. Seeds are
