@@ -173,6 +173,7 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
   the spatial inertia in the context; quaternion returned with w >= 0; PROP/THR/GIM/GIMR are 0, owned by other systems).
 - `mass.MassUpdater(plant, cfg).update(ctx, prop)` writes the full spatial inertia between `AdvanceTo` steps
   and keeps the CoM position/velocity continuous. The caller passes the step-midpoint propellant mass.
+- `propulsion.Engine(cfg, plant)` (S15): input ports `command` ([throttle, gx, gy, roll_torque]) and `plant_state`; outputs `spatial_forces` (thrust + roll torque at the pivot), `propellant` (kg), `thrust` (N). Continuous state = legacy slots 13..18. Details in PROGRESS.md Decisions.
 
 ## Randomness
 

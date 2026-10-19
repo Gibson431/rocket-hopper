@@ -55,6 +55,8 @@ REGRESSION_TESTS = {
     "test_gps_noise_statistics",
     "test_gps_dropout_probability",
 }
+# same basename as a fast legacy unit test, so matched by directory too
+REGRESSION_PATHS = {("drake", "test_propulsion.py")}
 REGRESSION_PREFIXES = ("test_closed_loop_",)
 
 
@@ -63,6 +65,7 @@ def pytest_collection_modifyitems(items):
         name = item.originalname or item.name
         if (
             item.path.name in REGRESSION_FILES
+            or (item.path.parent.name, item.path.name) in REGRESSION_PATHS
             or name in REGRESSION_TESTS
             or name.startswith(REGRESSION_PREFIXES)
         ):
