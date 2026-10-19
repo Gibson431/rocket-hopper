@@ -13,6 +13,7 @@ from hopper.sim.faults import (
     GimbalSlow,
     GimbalStuck,
     GpsOutage,
+    GyroBias,
     GyroBiasStep,
     ThrustScale,
 )
@@ -148,3 +149,9 @@ def test_no_faults_is_bit_identical_to_the_default_engine(cfg):
         np.random.default_rng(0),
     ).run(1.0)
     assert a.equals(b.log)
+
+
+def test_gyro_bias_adds_the_constant_vector_to_every_gyro_sample():
+    f = GyroBias(bias=(0.001, -0.002, 0.003))
+    assert np.allclose(f.modify_sensors(0.0, _data()).gyro, [0.001, -0.002, 0.003])
+    assert f.modify_sensors(0.0, _data(gyro=None)).gyro is None

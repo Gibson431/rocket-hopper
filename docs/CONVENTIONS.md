@@ -156,7 +156,7 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
 - `hopper.sim.faults`: `Fault` hooks `apply_command`, `modify_params` (+ `param_epoch`),
   `modify_sensors`; `Simulation(..., faults=())` applies them, and with no faults the engine takes
   the original path. Faults act on what the actuators/sensors see, never on the controller's inputs
-  directly.
+  directly. `GyroBias` (constant offset) is internal to the `gyro_bias` dispersion, not a YAML fault.
 - `hopper.analysis.monte_carlo.run_monte_carlo(path, n, base_seed, workers, out_dir)`: run seeds come
   from `run_seeds(base_seed, n)`; a seed fixes dispersions, noise and gusts, so
   `scripts/run_scenario.py <scenario> --seed S --dispersed` reproduces run S exactly.

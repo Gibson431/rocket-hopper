@@ -179,6 +179,9 @@ def test_dispersed_build_changes_the_truth_but_not_what_the_controller_knows(tmp
     assert sim.cfg.mass.dry_com_z == pytest.approx(cfg.mass.dry_com_z + d["com_z"])
     assert sim.controller.position.params.dry_mass == cfg.mass.dry_mass  # nominal knowledge
     assert sim.x0[0] == pytest.approx(d["pos_x"])
+    (bias,) = [f for f in sim.faults if f.type == "gyro_bias"]
+    expected = np.radians([d["gyro_bias_x"], d["gyro_bias_y"], d["gyro_bias_z"]])
+    assert bias.bias == pytest.approx(expected)
     assert sim.env.wind.mean_i[0] == pytest.approx(d["wind_e"])
 
 
