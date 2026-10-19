@@ -22,20 +22,16 @@ rocket equation. Read it and its tests (`tests/dynamics/test_propulsion.py`), th
   - Keep the hot path in plain floats (S12 throughput finding); no per-call allocation of Drake
     objects beyond what the port requires.
 - Reuse `propulsion()` as the single source of truth if S12 shows the Python cost is acceptable;
-  otherwise reimplement and keep the legacy function as a test oracle until S22.
+  otherwise reimplement it (S22 deletes the legacy function).
 
 ## Tests (`tests/drake/test_propulsion.py`)
 
-- For 200 random (state, command) pairs the engine's force, torque and state derivative equal
-  `propulsion()` to 1e-10.
-- Rocket equation: constant throttle burn in zero gravity and no aero gives delta-v within the
-  S04-era tolerance of `isp * g0 * ln(m0/m1)`.
-- Throttle lag: step response time constant equals `throttle_tau`; gimbal step stays within the angle
-  and rate limits and settles per `gimbal_wn`/`gimbal_zeta` (S03 tests re-expressed against the
-  diagram).
-- Sign checks: positive `gy` thrust direction and torque about -y_B exactly as pinned in S03.
-- Empty tank: thrust and mass flow are zero and the state does not go negative.
-- S13 goldens 2-4 (burns, throttle and gimbal steps) match within the S12 tolerances.
+Smoke tests; the engine model itself is not re-verified.
+
+- The engine system builds, and a 2 s burn in a diagram gives finite state, falling propellant and
+  thrust within the commanded range.
+- Sign convention: positive `gy` pushes the thrust toward +x_B (torque about -y_B), as in CONVENTIONS.md.
+- Empty tank: thrust is zero and propellant does not go negative.
 
 ## Definition of done
 

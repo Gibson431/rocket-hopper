@@ -16,7 +16,7 @@ randomness decisions).
   samples from the plant state, the specific force (source chosen in S12) and returns the delivered
   samples; the controller host keeps the newest sample per field between calls, as the engine does.
   Spawn order of sensor RNGs (`rng.spawn(4)`: imu, baro, gps, lidar) is unchanged so a seed produces the
-  same noise as the legacy run.
+  the same noise stream for a given seed.
 - `hopper/drake/faults.py`: the six faults plus `GyroBias` as diagram elements or wrappers around the
   command, parameter and sensor seams, with the same semantics as `hopper.sim.faults`:
   `apply_command` on the last commanded value every step (stuck gimbal ignores later commands and the
@@ -28,19 +28,17 @@ randomness decisions).
 
 ## Tests (`tests/drake/test_sensors.py`, `test_faults.py`)
 
-- Port the S07 sensor tests to run through the diagram: rates, latencies, `None` fields between
-  samples, noise statistics, GPS dropouts, baro/lidar from the CoM height, lidar range along -z_B.
-- The IMU specific force on the diagram equals `info["specific_force_B"]` from legacy
-  `vehicle_derivative` at the same state and command to 1e-6 (hover on the pad, free flight under
-  thrust, mid-landing).
-- For equal seeds the noise sequences equal the legacy ones (same RNG spawn order), compared on the
-  samples.
-- Port the S11 fault tests: `gimbal_stuck` holds the logged gimbal from the trigger time,
-  `thrust_scale` scales logged thrust, `engine_out` zeroes thrust through the throttle lag,
-  `gps_outage` gives `None` GPS in the window, `gimbal_slow` limits the rate, `gyro_bias_step` offsets
-  the gyro; a no-fault run is bit-identical to a run built without the fault machinery.
-- EKF hop on the diagram (seed 0, S10 numbers): LANDED, RMS position/velocity/attitude errors within the
-  S12 tolerances of the legacy figures (0.108 m, 0.019 m/s, 0.20 deg).
+The sensor models and faults are inputs to controller testing, so these stay; they are not simulator
+verification.
+
+- The existing S07 sensor and S11 fault tests keep passing when run through the diagram: rates,
+  latencies, `None` fields between samples, GPS dropouts, `gimbal_stuck` holds the logged gimbal,
+  `thrust_scale` scales logged thrust, `engine_out` zeroes thrust, `gps_outage` gives `None` GPS in the
+  window, `gimbal_slow` limits the rate, `gyro_bias_step` offsets the gyro. A no-fault run is
+  bit-identical to a run built without the fault machinery.
+- The IMU specific force is finite and about `[0, 0, g]` for a vehicle at rest on the pad.
+- EKF hop on the diagram (seed 0): LANDED, with estimation errors in the S10 acceptance bounds
+  (`tests/estimation/test_closed_loop.py`).
 
 ## Definition of done
 

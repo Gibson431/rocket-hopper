@@ -16,10 +16,9 @@ tests, the S05 Decisions in `docs/PROGRESS.md` (the V_EPS = 0.05 stability findi
   chosen in S12 to the plant from `LegConfig` (count, radius, length, stiffness, damping, friction).
   Parameters map one-to-one from the existing config; document how stiffness and damping translate
   to Drake's contact parameters if they do not map directly. Series stiffness: set the foot and
-  ground stiffness so the combined value equals `legs.stiffness`. Hunt-Crossley dissipation is
-  depth-proportional and cannot equal the legacy linear damper; tune it, and if the tolerances
-  below cannot be met, use the S12 fallback (legacy `contact_loads` as a Python applied-force
-  element, with `ContactOutput` feeding the observers).
+  ground stiffness so the combined value equals `legs.stiffness`. Tune Hunt-Crossley
+  dissipation until the vehicle lands without bouncing or jitter. There is no need to match the
+  legacy leg law; the S12 fallback (`contact_loads` as an applied force) is only for stability.
 - Contact observation system: per-foot normal force, feet-in-contact count, total contact force and
   base-strike flag as outputs (they feed the log and the events).
 - `hopper/drake/events.py`: the same `Outcome` classification and thresholds from `SimConfig`
@@ -30,22 +29,15 @@ tests, the S05 Decisions in `docs/PROGRESS.md` (the V_EPS = 0.05 stability findi
 
 ## Tests (`tests/drake/test_legs.py`, `test_events.py`)
 
-- Static rest: the vehicle settles at the legacy equilibrium height and total contact force equals
-  weight within 1%; each foot carries a quarter on level ground.
-- Drop from 0.5 m (S13 golden 5): settle height and rebound count within the S12 tolerances; tilted
-  drop ends upright or tips as in legacy. Peak force and force history are compared only if S12
-  showed the chosen contact model can match them; otherwise assert a physical bound (peak below the
-  crash limit, energy never increases) and record the measured difference in Decisions.
-- Friction: a sliding vehicle stops at the Coulomb distance `v^2 / (2 mu g)` within 5%; no yaw limit
-  cycle after settling (yaw rate below 1e-3 rad/s after 3 s, the S05 regression).
-- No contact above the reach of the legs; base strike flags when the base touches.
+Smoke tests for the contact model; the events are flight-logic and keep their tests.
+
+- A vehicle dropped from 0.5 m settles upright on the pad (finite, no energy gain, rest height
+  sensible) and does not jump or jitter; a hard 5 m/s landing stays numerically stable.
 - Events: each `Outcome` is produced by a constructed state exactly as in `tests/sim/test_events.py`
-  (port those tests to the Drake outputs), with the same precedence order.
-- Stability: the chosen integrator and step stay stable (no energy gain) for a 10 s resting run and a
-  hard 5 m/s landing.
+  (port those tests to the Drake outputs), with the same precedence order. They define when a run
+  counts as landed or crashed, which the controller scenarios depend on.
 
 ## Definition of done
 
-- Tests pass; ruff clean. Deviations from the legacy contact (for example a different friction
-  regularisation) are recorded in Decisions with the measured effect.
+- Tests pass; ruff clean. The contact parameters chosen are recorded in Decisions.
 - Progress tracker updated per `docs/AGENT_START.md`.

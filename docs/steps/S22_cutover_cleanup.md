@@ -4,10 +4,10 @@
 
 ## Context
 
-Make Drake the only simulation backend and delete the hand-rolled one. Only do this when the S13
-goldens, S18-S20 parity tests and the Monte Carlo baselines all pass on the Drake backend. If they do
-not, do not delete anything: set the step `blocked` with what fails. Read `docs/DRAKE_DESIGN.md`, the
-S13 step file, and the git history of the legacy modules.
+Make Drake the only simulation backend and delete the hand-rolled one. Do this once the S18-S20 closed-loop
+tests pass on the Drake backend. No comparison with the legacy sim is needed: Drake is the source of
+truth. If those tests fail, do not delete anything: set the step `blocked` with what fails. Read
+`docs/DRAKE_DESIGN.md` and the git history of the legacy modules.
 
 ## Deliverables
 
@@ -19,8 +19,8 @@ S13 step file, and the git history of the legacy modules.
   `environment.atmosphere`/ISA helpers if reused, `sim/events.py` if S17 reused it, sensors,
   `sim/faults.py` if S19 reused it, `types`, `math3d`, `analysis/logger.py`. Delete only what a search
   shows is unreferenced; move anything kept into its final home rather than leaving a dead package.
-- Tests that compared against the legacy sim are rewritten to compare against the S13 golden files
-  (the goldens become the regression oracle). Nothing imports from a deleted module.
+- Tests that exercised the legacy simulator are deleted with it; tests of flight software stay.
+  Nothing imports from a deleted module.
 - Docs: `docs/PLAN.md` architecture and steps table, `docs/CONVENTIONS.md` (tooling: `drake` dependency,
   Drake package layout, integrator and body-frame rules), `docs/AGENT_START.md` rules (no RK4 wording,
   `pydrake` import ban for flight software), `README.md`, CI.
@@ -30,7 +30,7 @@ S13 step file, and the git history of the legacy modules.
 
 ## Tests
 
-- Whole suite passes with the legacy modules gone; golden parity tests pass at their tolerances.
+- Whole suite passes with the legacy modules gone.
 - `scripts/run_scenario.py` and `scripts/run_monte_carlo.py` run end to end for a provided scenario.
 - Import-boundary and "no references to deleted modules" tests.
 

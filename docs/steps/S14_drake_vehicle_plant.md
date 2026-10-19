@@ -1,6 +1,6 @@
 # S14: Drake vehicle plant, mass properties, state adapters
 
-**Depends on:** S12, S13. **Effort:** 2 days.
+**Depends on:** S12. **Effort:** 1-2 days.
 
 ## Context
 
@@ -27,21 +27,18 @@ body frame, mass updating and integrator), `src/hopper/dynamics/mass_model.py`,
 
 ## Tests (`tests/drake/test_plant.py`, `test_state.py`)
 
-- State round trip: random state -> Drake -> state equals the input to 1e-12 for position, velocity,
-  quaternion (up to sign) and body rate, for non-zero CoM offsets and rotated vehicles.
-- Free fall matches `z = z0 - g t^2 / 2` and the S13 golden 1 to the S12-proposed tolerance.
-- Torque-free spin: angular momentum conserved; a body spinning about a non-principal axis matches
-  the legacy rigid-body derivative integrated at a fine step; kinetic energy conserved.
-- A pure force applied at the pivot gives the legacy CoM acceleration and torque (`r x F`, sign
-  pinned like the S03 tests).
-- `MassUpdater`: for propellant 20..0 kg the plant's mass, CoM and inertia equal `mass_properties` to
-  1e-12, including the early CoM dip noted in S03 Decisions.
+Smoke tests only; Drake is the source of truth for the physics (see PROGRESS Decisions).
+
+- `build_vehicle_plant` builds and finalises; a diagram with it runs 1 s of free fall with finite state.
+- The state adapters round-trip (a handful of states, including rotated vehicles and a non-zero CoM
+  offset): the controller sees positions, velocities, quaternion and body rate in the CONVENTIONS frames.
+  This one is a test of our own conversion code, not of Drake.
+- `MassUpdater` writes the `mass_properties` mass, CoM and inertia for propellant 20 and 0 kg.
 - Import boundary: `hopper.control`, `hopper.estimation`, `hopper.types`, `hopper.math3d` never import
   `pydrake` (extend `tests/control/test_import_boundary.py` and the estimation one).
 
 ## Definition of done
 
 - Tests pass; ruff clean; `uv sync` and CI green with the dependency.
-- Parity tolerances used are written in the test file with a comment pointing to the S12 measurement.
 - Progress tracker updated per `docs/AGENT_START.md`; update `docs/CONVENTIONS.md` with the Drake
   package layout and the body-frame/state-conversion rule.

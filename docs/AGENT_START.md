@@ -58,6 +58,7 @@ You may be a fresh agent with no memory of earlier sessions. Everything you need
 - Keep the simulation numerically honest: fixed-step integration (the legacy sim uses RK4 with the
   quaternion renormalised each step; Drake has no RK4, so S12 chooses the Drake integrator and S22 rewrites
   this rule). Never adaptive stepping in Monte Carlo runs unless S12 shows it is reproducible.
-- During the Drake port (S12-S22) the legacy simulator is the oracle: do not change its behaviour. Fix
-  bugs in it only with a Decisions entry and regenerate the S13 goldens.
+- The simulator is not the product: Drake is the source of truth. Do not write unit tests for the
+  simulator or A/B comparisons against the legacy sim (S13 was dropped). Test the controller and
+  estimator; for simulator code a smoke test (builds, runs, finite, deterministic) is enough.
 - Match the style of existing code. Keep comments short and explain why, not what.

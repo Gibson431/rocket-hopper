@@ -22,8 +22,8 @@ landing, so S00-S11 wrote one. Drake is a general multibody and systems framewor
 tool, so it fits: the rocket-specific parts (variable mass, gimbal, actuator lag) become small systems
 around a maintained rigid-body and contact engine, and we get composable diagrams and Meshcat
 visualisation. Expect parity with the hand-rolled code on speed, not a speedup (Python systems stay on
-the hot path), and note that linearisation/autodiff will not see through Python systems. The hand-rolled code is kept
-as the oracle until the port matches it (S22 removes it).
+the hot path), and note that linearisation/autodiff will not see through Python systems. Drake is the
+source of truth for the physics; the hand-rolled code is deleted in S22 and not compared against.
 
 ## Architecture
 
@@ -101,15 +101,15 @@ software does not move: `hopper.control`, `hopper.estimation`, `hopper.types` an
 hand-written, never import `pydrake`, and run unchanged inside a Drake `LeafSystem` host. The sensor
 models are reused as they are.
 
-**Method.** The legacy simulator stays as the oracle until the end. S13 freezes its outputs as golden
-files, so S22 can delete it and keep the goldens as the regression. Each porting step has parity tests
-against those goldens with tolerances measured in S12, not guessed.
+**Method.** The project is about the controller, not the simulator. Drake is the source of truth, so
+there are no golden files, no legacy-vs-Drake comparisons and no simulator unit tests. Each porting
+step needs only a smoke test (builds, runs, outputs finite, same seed gives the same result), and the
+real acceptance is that the S09-S11 controller scenarios fly on the Drake backend.
 
 | ID | Title | Depends on | Effort |
 |----|-------|-----------|--------|
 | S12 | Drake feasibility spike and design decisions (gate) | S11 | 1-2 d |
-| S13 | Legacy golden references and parity harness | S11 | 1 d |
-| S14 | Drake vehicle plant, mass properties, state adapters | S12, S13 | 2 d |
+| S14 | Drake vehicle plant, mass properties, state adapters | S12 | 1-2 d |
 | S15 | Propulsion and actuators as Drake systems | S14 | 2 d |
 | S16 | Environment, wind and aerodynamics | S14 | 1-2 d |
 | S17 | Legs, ground contact and outcome events | S14 | 2-3 d |
@@ -119,7 +119,7 @@ against those goldens with tolerances measured in S12, not guessed.
 | S21 | Visualisation: Meshcat replay and log plots | S18 | 2 d |
 | S22 | Cutover to Drake and legacy removal | S20, S21 | 1-2 d |
 
-S12 and S13 run in parallel; S15, S16 and S17 run in parallel after S14; S21 can run alongside S19-S20.
+S15, S16 and S17 run in parallel after S14; S21 can run alongside S19-S20.
 
 **Known design problems** (S12 answers them): Drake has no fixed-step RK4 (the "fixed-step RK4" rule is
 amended in S12/S22); `MultibodyPlant` mass is a context parameter, not a state, so burning propellant
@@ -129,20 +129,20 @@ needs an updater system; the legacy body frame is at the CoM, Drake's is fixed o
 cannot write the plant's mass parameters (needs a sim-loop hook), a separate delay system adds a step
 of latency, and Drake's contact (series stiffness, depth-proportional damping) will not reproduce the
 legacy leg law exactly, so S17 has a fallback of keeping the legacy law as a force element.
-Effort for S12-S22 sums to 19-24 days; S17 and S18 carry the schedule risk.
+Effort for S12-S22 sums to about 17-21 days; S17 and S18 carry the schedule risk.
 
 **Removed from the plan.** The earlier S12 (matplotlib plots and 3D replay) and S13 (LQR/MPC/Gym) were
-scrapped when the port was planned. Plots and replay come back in S21, built on Meshcat. The advanced
+scrapped when the port was planned, and the later S13 (legacy goldens and parity harness) was dropped
+because the simulator is not the focus. Plots and replay come back in S21, built on Meshcat. The advanced
 control ideas are in the Backlog of `docs/PROGRESS.md` for after the port.
 
 ## Validation strategy
 
-- Unit tests per module against analytic cases (free fall, torque-free spin, rocket equation).
-- Conservation checks (energy, angular momentum) as regression tests.
-- Integrator convergence test: halving dt reduces error at 4th order.
-- Golden scenarios: fixed-seed runs whose key metrics are checked in CI.
-- Property tests (hypothesis) for quaternion operations.
-- Optional cross-check of a simplified case against RocketPy or MuJoCo.
+- Unit tests target flight software: controller, estimator, mission logic, math and types. Analytic
+  cases and property tests (hypothesis) are fine there.
+- The simulator (Drake) is trusted: smoke tests only (builds, runs, finite, deterministic for a seed).
+  No simulator unit tests, no golden files, no A/B comparison between simulators.
+- Closed-loop scenarios (S09-S11) and Monte Carlo are the acceptance for the controller.
 
 ## Risks
 
