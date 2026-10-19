@@ -20,8 +20,17 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S09 | Position cascade and mission state machine | done | S08 | 2026-10-19 | position.py (Altitude/Horizontal/PositionController, Setpoint), mission.py (MissionStateMachine, MissionController), scenario_glue.run_hop, `run_scenario.py --mission hop`. Hop (seed 0): LANDED, err 0.002 m, touchdown 0.75 m/s (0.72 with decimated log), tilt ~0 deg, flight 22.6 s, fuel 11.1 kg; 20 ms delay err 0.002 m; 3 m/s wind err 0.14 m. thrust_min_frac now 0.3. Reviewed: PASS (round 1) |
 | S10 | State estimator (EKF) | done | S07, S09 | 2026-10-19 | estimation/{ekf,mass}.py, estimated_controller.py, scenario_glue.ekf_params_from_config, `run_hop(perfect_state=False)`, `--ekf`, controller log hook (est_*/sig_*). Real hop on EKF (seed 0, test_closed_loop): RMS pos 0.108 m, vel 0.019 m/s, att 0.20 deg, mass err < 1e-4 kg; LANDED, err 0.38 m, touchdown 0.68 m/s. Noise-free RMS to touchdown: 4 mm, 1.8 mm/s, 0.005 deg. ANEES 15.7 (16 dof), NIS baro 1.01, GPS 5.95. Buffered GPS xy RMS 0.11 m vs naive 0.96 m. Reviewed: PASS (round 1) |
 | S11 | Scenarios, faults, Monte Carlo | done | S09 | 2026-10-19 | scenario.py (strict YAML schema, build_simulation, sample_dispersions, run_scenario), sim/faults.py (6 faults + GyroBias), `Simulation(faults=)`, analysis/monte_carlo.py, scripts/run_monte_carlo.py, run_scenario.py now takes a scenario file. Baselines (EKF, 16 seeds each, noise only): hop_nominal / hop_wind / hop_gps_outage / hop_gimbal_fault 16/16 LANDED; hop_gimbal_stuck 0/16 (CRASHED, expected); hop_dispersed 36/100 LANDED (Wilson 27-46%). Throughput ~1.1-1.4 runs/min/worker for a full EKF hop (16 runs on 3 workers while the box was oversubscribed), 0.8 for the 100-run dispersed set where failures run to 47 s. Reviewed: PASS (round 2) |
-| S12 | Plots and 3D replay | todo | S06 | - | |
-| S13 | Advanced control (LQR, MPC, Gym) | todo | S11 | - | |
+| S12 | Drake feasibility spike and design decisions | todo | S11 | - | Gate: answers variable mass, body frame, contact, integrator, accelerometer, RNG, speed |
+| S13 | Legacy golden references and parity harness | todo | S11 | - | Freeze legacy outputs before anything is removed |
+| S14 | Drake vehicle plant, mass properties, state adapters | todo | S12, S13 | - | |
+| S15 | Propulsion and actuators as Drake systems | todo | S14 | - | |
+| S16 | Environment, wind and aerodynamics on Drake | todo | S14 | - | |
+| S17 | Legs, ground contact and outcome events on Drake | todo | S14 | - | |
+| S18 | Closed-loop diagram, controller host, delay, logging | todo | S15, S16, S17 | - | |
+| S19 | Sensors and fault injection on Drake | todo | S18 | - | |
+| S20 | Scenarios and Monte Carlo on Drake | todo | S19 | - | |
+| S21 | Visualisation: Meshcat replay and log plots | todo | S18 | - | |
+| S22 | Cutover to Drake and legacy removal | todo | S20, S21 | - | |
 
 ## Decisions
 
@@ -102,6 +111,7 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 - 2026-10-19, S11: run seeds are `int(SeedSequence(base).spawn(n)[i].generate_state(1, uint64)[0] >> 1)`; summary is independent of `workers` (tested 1 vs 4). Success means outcome LANDED. `summary.parquet` columns: run, seed, outcome, success, metrics, `t_end`, `est_rms_*` (NaN for perfect state; position/velocity/attitude RMS from the first estimate to first touchdown), `disp_*` (sampled dispersions). Logs of non-landed runs go to `logs/run_<i>_seed_<seed>.parquet` (decimated x10).
 - 2026-10-19, S11: scenario schema deviations from the step's example: `estimation` defaults to `perfect`; `gyro_bias_step` takes an optional `axis` (default all axes); `t_max` ends the run via `Simulation.run(t_max)`; mission keys are exactly the `MissionParams` fields (schema generated from the dataclass); `initial.pos` is relative to the pad (z = 0 stands on it) and the landing error is measured from the (dispersed) start position plus `target_xy`. `vehicle` is resolved from the cwd, else from any parent of the scenario file. `HopSummary` gained `touchdown_hspeed`, `max_tilt`, `max_gimbal`, `touchdown_index` (defaulted fields).
 - 2026-10-19, S11: provided `hop_gimbal_fault` uses `gimbal_slow` (0.2) because a stuck gimbal is unrecoverable (the x axis cannot produce pitch torque); the step's stuck-gimbal example is in an extra scenario `hop_gimbal_stuck`, whose expected outcome is CRASHED. The 16-seed hop_dispersed ablation (wind only 16/16, mass/CoM/thrust/initial position 16/16, gyro bias only 9/16) points to the gyro-bias dispersion.
+- 2026-10-19, replan: old S12 (matplotlib plots and 3D replay) and S13 (LQR, MPC, Gymnasium) scrapped at the user's request and their step files deleted; new S12-S22 port the simulation side to Drake (see `docs/PLAN.md`, "Drake port"). The IDs S12 and S13 are reused for new steps: earlier log lines saying "Next: S12 or S13" refer to the scrapped steps. Flight software (control, estimation, types, math3d) is not ported and may never import `pydrake`; the sensor models are reused. The legacy sim stays as the oracle until S22, with S13 goldens as the lasting regression. Drake has no fixed-step RK4, so the "fixed-step RK4" rule is provisional until S12 picks an integrator.
 
 ## Backlog
 
@@ -123,6 +133,10 @@ Out-of-scope ideas found while working. Do not do these inside another step.
 - S11 findings: `hop_dispersed` lands only 36/100. Ablation: the `gyro_bias` dispersion (sigma 0.1 deg/s, ~70x the EKF prior of 5 deg/h) causes it; failures sit in TRANSLATE with a drifting estimate until the 40 s state timeout, then ABORT and fall. Either estimator bias handling (EKF gyro-bias prior/learning under motion) or the mission's arrival guard needs work (S10/S09 follow-up), or the dispersion should be reduced. Also: MC throughput is ~1 run/min/worker, so the 500-run CLI example takes ~hours on 8 cores; the physics speed backlog item (S06) would help most.
 - S11 review suggestions: check moments on the MC summary `disp_*` columns (currently only on `sample_dispersions`); test thrust_scale/engine_out through a provided YAML scenario; throughput figures were measured on an oversubscribed box (re-measure on an idle machine); for mutation checks in a repo copy set PYTHONPATH to the copy's src.
 
+- Scrapped S13 ideas, for after the port (Drake offers linearisation, LQR and mathematical-program tools that may replace the planned `python-control`/`casadi` route): gain-scheduled LQR with `python-control` margins, MPC or convex powered-descent guidance, a Gymnasium wrapper over the simulation.
+- Port feasibility review (2026-10-19): decided to go ahead with the full port. Spike findings are folded into S12-S18 and PLAN.md (mass-parameter writes, controller+delay latency, contact model gap and fallback, S13 tolerance, throughput parity). The Monte Carlo throughput item above is NOT solved by the port (physics is about 70% of a hop and stays in Python systems); it needs vectorisation or compiled code, separately.
+- Port-related, from S11: `hop_dispersed` lands 36/100 because of the gyro-bias dispersion; the port must reproduce this, not fix it (fix separately).
+
 ## Session log
 
 Append one entry per session that changes status. Newest last.
@@ -142,3 +156,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-19, S09, todo -> done: position.py, mission.py, run_hop + `run_scenario.py --mission hop`, thrust_min_frac 0.3, `has_flown` landing guard; 359 tests. Reviewed: PASS (round 1). Hop lands 0.002 m from the site at 0.75 m/s; 20 ms delay and 3 m/s wind also LANDED (0.14 m). Next: S10 (needs `MissionController.step` for sensors) or S11.
 - 2026-10-19, S10, todo -> done: error-state EKF with buffered latency replay, static alignment, propellant dead-reckoning, EstimatedController, log hook; 402 tests. Reviewed: PASS (round 1). Hop flown on the estimate lands 0.38 m from the site at 0.68 m/s. Next: S11 or S12 (S13 needs S11).
 - 2026-10-19, S11, todo -> done: scenario schema/loader, six faults + engine seams, Monte Carlo (Wilson CI, percentiles, failed seeds), CLIs, five provided scenarios plus hop_gimbal_stuck; 456 tests. Reviewed: PASS (round 2; round 1 failed on untested gyro_bias dispersion). Baselines: all non-dispersed hops 16/16 LANDED, hop_dispersed 36/100 (gyro-bias dispersion, see Backlog). Next: S12 or S13.
+- 2026-10-19, replan (no step): S12/S13 scrapped; Drake port planned as S12-S22 (step files in docs/steps, PLAN.md "Drake port" section, AGENT_START rules updated). Pre-checked in a scratch env: pydrake 1.58 installs on Python 3.12 via uv, has no RK4, has RigidBody.SetMass/SetSpatialInertiaInBodyFrame(context) and a body-spatial-acceleration output port. Nothing in src/ or pyproject.toml changed. Next: S12 and S13 (parallel).

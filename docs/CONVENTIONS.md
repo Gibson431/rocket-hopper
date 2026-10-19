@@ -12,7 +12,7 @@ If you must change anything here, update this file in the same change and log it
   and commit `uv.lock`. Do not create or activate a virtualenv manually.
 - Runtime deps: numpy, scipy, pydantic>=2, pyyaml, pandas, pyarrow, matplotlib.
 - Dev deps: pytest, hypothesis, ruff.
-- Write the EKF by hand (no filterpy). `python-control` and `casadi` arrive in S13.
+- Write the EKF by hand (no filterpy). `drake` (pydrake) is added in S12 for the simulation side only (see `docs/PLAN.md`, "Drake port").
 - Commands: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format .`.
 
 ## Units and frames

@@ -47,12 +47,17 @@ You may be a fresh agent with no memory of earlier sessions. Everything you need
 - If you are the reviewer subagent, follow `docs/REVIEW.md` Part 2 only: you are read-only and must
   not touch `docs/PROGRESS.md` or start implementing anything.
 - The controller package (`src/hopper/control/`) must never import from `hopper.dynamics`,
-  `hopper.sim`, or `hopper.sensors`. It may import only `hopper.types` and `hopper.math3d`.
+  `hopper.sim`, `hopper.sensors`, `hopper.drake` or `pydrake`. It may import only `hopper.types` and
+  `hopper.math3d`. The same holds for `src/hopper/estimation/`.
   This keeps it portable to Rust or C later and prevents cheating with true state.
 - Use `uv` for all environment and dependency work (`uv add`, `uv sync`, `uv run`); never `pip` or a
   hand-made venv. See CONVENTIONS.md "Tooling".
 - SI units everywhere. No hidden unit conversions.
 - All randomness goes through a `numpy.random.Generator` passed in explicitly. Runs with the same
   seed must be bit-reproducible.
-- Keep the simulation numerically honest: fixed-step RK4, quaternion renormalised each step.
+- Keep the simulation numerically honest: fixed-step integration (the legacy sim uses RK4 with the
+  quaternion renormalised each step; Drake has no RK4, so S12 chooses the Drake integrator and S22 rewrites
+  this rule). Never adaptive stepping in Monte Carlo runs unless S12 shows it is reproducible.
+- During the Drake port (S12-S22) the legacy simulator is the oracle: do not change its behaviour. Fix
+  bugs in it only with a Decisions entry and regenerate the S13 goldens.
 - Match the style of existing code. Keep comments short and explain why, not what.

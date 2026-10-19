@@ -15,11 +15,15 @@ RL training (a Gymnasium wrapper is an optional late step).
 **Vehicle numbers** (mass, inertia, thrust, gimbal limits, tank layout) are placeholders in
 `configs/vehicle_default.yaml` until real values exist. Nothing in the plan depends on the specific values.
 
-## Why a custom sim
+## Why a custom sim, and why now Drake
 
-No existing simulator (RocketPy, CamPyRoS, OpenRocket) supports TVC, throttling or powered landing, and
-none exists in Rust. A 6-DOF rigid body with quaternions is ~150 lines. The rocket-specific parts
-(variable mass, gimbal, actuator lag, sensors) are easier to write than to bolt on.
+No existing rocket simulator (RocketPy, CamPyRoS, OpenRocket) supports TVC, throttling or powered
+landing, so S00-S11 wrote one. Drake is a general multibody and systems framework rather than a rocket
+tool, so it fits: the rocket-specific parts (variable mass, gimbal, actuator lag) become small systems
+around a maintained rigid-body and contact engine, and we get composable diagrams and Meshcat
+visualisation. Expect parity with the hand-rolled code on speed, not a speedup (Python systems stay on
+the hot path), and note that linearisation/autodiff will not see through Python systems. The hand-rolled code is kept
+as the oracle until the port matches it (S22 removes it).
 
 ## Architecture
 
@@ -83,11 +87,53 @@ Each step has a self-contained file in `docs/steps/`. Status lives in `docs/PROG
 | S09 | Position cascade and mission state machine | S08 | 2-3 d |
 | S10 | State estimator (EKF) | S07, S09 | 3-4 d |
 | S11 | Scenarios, faults, Monte Carlo | S09 (S10 optional) | 2-3 d |
-| S12 | Plots and 3D replay | S06 | 2 d |
-| S13 | Advanced control (LQR, MPC, Gym) | S11 | open-ended |
 
-S07 and S08 can proceed in parallel after S06. S12 can start any time after S06.
-The first flyable milestone is **S09** (a hop with perfect state feedback).
+S00-S11 built the hand-rolled simulator and flight software (all done). S12-S22 port the simulation
+side to Drake; see "Drake port" below.
+
+The first flyable milestone was **S09** (a hop with perfect state feedback).
+
+## Drake port (S12-S22)
+
+**Scope.** Dynamics, environment, contact, integration, the sim loop, fault injection, Monte Carlo
+plumbing and visualisation move to Drake (`pydrake`, in the new `src/hopper/drake/` package). Flight
+software does not move: `hopper.control`, `hopper.estimation`, `hopper.types` and `hopper.math3d` stay
+hand-written, never import `pydrake`, and run unchanged inside a Drake `LeafSystem` host. The sensor
+models are reused as they are.
+
+**Method.** The legacy simulator stays as the oracle until the end. S13 freezes its outputs as golden
+files, so S22 can delete it and keep the goldens as the regression. Each porting step has parity tests
+against those goldens with tolerances measured in S12, not guessed.
+
+| ID | Title | Depends on | Effort |
+|----|-------|-----------|--------|
+| S12 | Drake feasibility spike and design decisions (gate) | S11 | 1-2 d |
+| S13 | Legacy golden references and parity harness | S11 | 1 d |
+| S14 | Drake vehicle plant, mass properties, state adapters | S12, S13 | 2 d |
+| S15 | Propulsion and actuators as Drake systems | S14 | 2 d |
+| S16 | Environment, wind and aerodynamics | S14 | 1-2 d |
+| S17 | Legs, ground contact and outcome events | S14 | 2-3 d |
+| S18 | Closed-loop diagram, controller host, delay, logging | S15, S16, S17 | 3 d |
+| S19 | Sensors and fault injection | S18 | 2 d |
+| S20 | Scenarios and Monte Carlo on Drake | S19 | 2 d |
+| S21 | Visualisation: Meshcat replay and log plots | S18 | 2 d |
+| S22 | Cutover to Drake and legacy removal | S20, S21 | 1-2 d |
+
+S12 and S13 run in parallel; S15, S16 and S17 run in parallel after S14; S21 can run alongside S19-S20.
+
+**Known design problems** (S12 answers them): Drake has no fixed-step RK4 (the "fixed-step RK4" rule is
+amended in S12/S22); `MultibodyPlant` mass is a context parameter, not a state, so burning propellant
+needs an updater system; the legacy body frame is at the CoM, Drake's is fixed on the body; Python
+`LeafSystem` callbacks may be slower than the current 1300 steps/s; Drake objects are not picklable
+(build the diagram inside each Monte Carlo worker). Found while checking feasibility: a `LeafSystem`
+cannot write the plant's mass parameters (needs a sim-loop hook), a separate delay system adds a step
+of latency, and Drake's contact (series stiffness, depth-proportional damping) will not reproduce the
+legacy leg law exactly, so S17 has a fallback of keeping the legacy law as a force element.
+Effort for S12-S22 sums to 19-24 days; S17 and S18 carry the schedule risk.
+
+**Removed from the plan.** The earlier S12 (matplotlib plots and 3D replay) and S13 (LQR/MPC/Gym) were
+scrapped when the port was planned. Plots and replay come back in S21, built on Meshcat. The advanced
+control ideas are in the Backlog of `docs/PROGRESS.md` for after the port.
 
 ## Validation strategy
 
