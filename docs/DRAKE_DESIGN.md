@@ -1,6 +1,6 @@
 # Drake port: design decisions (S12)
 
-Produced by the S12 spike. Spike code is in `scripts/spikes/` (`s12_*.py`, ruff-excluded, throwaway);
+Produced by the S12 spike. Speeds are approximate (run-to-run spread 10-15%). Spike code is in `scripts/spikes/` (`s12_*.py`, ruff-excluded, throwaway);
 the numbers below come from running it on pydrake 1.58, Python 3.14.8, Linux x86_64. Open-loop test case
 for "burn" results: 12 s, throttle 0.4-1.0, gimbal pulses, roll torque, 100 kg -> 90 kg, initial spin;
 truth = legacy RK4 at dt = 0.25 ms (legacy 1 ms and 0.5 ms agree with it to 4e-10 m).
@@ -105,7 +105,7 @@ max foot penetration 38.8 mm, rest penetration 8.17 mm, rest force 980.7 N, **no
   sliding, so any slide test must use lower mu or compare to legacy, never to `v^2/(2 mu g)`), 1 m/s slide,
   3 s: residual yaw rate from a 1 rad/s spin is 5.8e-3 rad/s at tolerance 1e-4 and 1e-3, 3.6e-5 at 1e-2 and
   4.0e-4 at 5e-2 (all under the 1e-3 target except 1e-4/1e-3; the S05 limit cycle is the 1e-4 case). The
-  tolerance 5e-2 matches legacy `V_EPS` and keeps residual slide speed lowest (7.5e-3 m/s). **Open
+  tolerance 5e-2 matches legacy `V_EPS` and keeps residual slide speed lowest (7.5e-3 m/s; 2.5e-2 m/s at 1e-4 to 1e-2). **Open
   risk:** the slide distance is 0.048 m in Drake vs 0.105 m legacy (analytic 0.170 m: legacy itself is short
   because friction pitches the vehicle); S17 must either explain or accept it.
 - **(b) prismatic legs + `LinearSpringDamper` + foot sphere** works and is stable at 1 ms RK3 (leg mass 5 kg, foot
