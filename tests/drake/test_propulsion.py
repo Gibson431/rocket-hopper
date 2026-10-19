@@ -129,3 +129,19 @@ def test_gimbal_rate_stays_within_the_rate_limit(cfg):
     rate = engine.GetMyContextFromRoot(ctx).get_continuous_state_vector().CopyToVector()[4]
     assert rate <= 1.05 * cfg.engine.gimbal_rate_max  # state may overshoot one step, as in legacy
     assert rate > 0.9 * cfg.engine.gimbal_rate_max
+
+
+def test_roll_torque_acts_about_the_body_z_axis_when_the_vehicle_is_tilted(cfg):
+    q = [np.cos(np.pi / 4), 0.0, np.sin(np.pi / 4), 0.0]  # z_B along +x_I
+    sim, plant, engine, ctx = _build(cfg, [0.0, 0.0, 0.0, 1.0], quat=q)
+    sim.AdvanceTo(0.5)
+    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    assert x[12] > 0.5
+    assert abs(x[10]) < 1e-6 and abs(x[11]) < 1e-6
+
+
+def test_thrust_fraction_decays_once_the_tank_is_empty(cfg):
+    sim, plant, engine, ctx = _build(cfg, [1.0, 0.0, 0.0, 0.0], prop=0.0, thrust_frac=1.0)
+    sim.AdvanceTo(5 * cfg.engine.throttle_tau)
+    s = engine.GetMyContextFromRoot(ctx).get_continuous_state_vector().CopyToVector()
+    assert s[1] < 0.01
