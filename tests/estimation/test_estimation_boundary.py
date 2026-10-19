@@ -35,6 +35,16 @@ def test_estimation_package_imports_only_types_and_math3d():
         assert not bad, f"{f.name} imports {sorted(bad)}"
 
 
+def test_estimation_package_does_not_import_drake():
+    for f in Path(hopper.estimation.__file__).parent.glob("*.py"):
+        tree = ast.parse(f.read_text())
+        for node in ast.walk(tree):
+            names = [a.name for a in node.names] if isinstance(node, ast.Import) else []
+            if isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            assert not any(n.split(".")[0] == "pydrake" for n in names), f"{f.name} imports pydrake"
+
+
 def test_boundary_check_detects_a_violation(tmp_path):
     bad = tmp_path / "bad.py"
     bad.write_text("from hopper.control.mission import MissionController\nimport hopper.sim\n")
