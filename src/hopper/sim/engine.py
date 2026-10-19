@@ -2,6 +2,7 @@
 
 import hashlib
 from collections import deque
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -17,6 +18,7 @@ from hopper.dynamics.propulsion import propulsion
 from hopper.dynamics.vehicle import vehicle_derivative
 from hopper.sensors.suite import SensorSuite
 from hopper.sim.events import EventMonitor, Outcome
+from hopper.sim.faults import Fault
 from hopper.sim.integrator import rk4_step
 from hopper.types import OMEGA, POS, PROP, QUAT, VEL, Command, SensorData, StateEstimate
 
@@ -54,6 +56,7 @@ class Simulation:
         perfect_state: bool = True,
         command_delay: float = 0.0,
         log_decimation: int = 1,
+        faults: Sequence[Fault] = (),
     ) -> None:
         if command_delay < 0:
             raise ValueError(f"command_delay must be >= 0, got {command_delay}")
@@ -65,6 +68,7 @@ class Simulation:
         self.perfect_state = perfect_state
         self.command_delay = command_delay
         self.log_decimation = log_decimation
+        self.faults = tuple(faults)
         self.seed = _seed_of(rng)
         env.wind.reset(int(rng.integers(2**32)))
         self.sensors = None if perfect_state else SensorSuite(cfg, rng)
@@ -72,12 +76,14 @@ class Simulation:
             str, object
         ] = {}  # newest delivered sample per field since the last call
 
-    def _sense(self, t: float, x: np.ndarray, cmd: Command) -> None:
+    def _sense(self, t: float, x: np.ndarray, cmd: Command, cfg: VehicleConfig) -> None:
         """Advance the sensors one physics step and keep the newest sample per field."""
         info: dict = {}
         if self.sensors.needs_info(t):
-            vehicle_derivative(t, x, cmd, self.cfg, self.env, info=info)
+            vehicle_derivative(t, x, cmd, cfg, self.env, info=info)
         data = self.sensors.sample(t, x, info)
+        for fault in self.faults:
+            data = fault.modify_sensors(t, data)
         for name in _SENSOR_FIELDS:
             if (v := getattr(data, name)) is not None:
                 self._latest[name] = v
@@ -112,25 +118,39 @@ class Simulation:
         monitor = EventMonitor(cfg)
         self.controller.reset()
         x = self.x0.copy()
-        applied = ENGINE_OFF
+        faults = self.faults
+        phys, epochs = cfg, None  # physics config: nominal until a parameter fault triggers
+        raw = applied = ENGINE_OFF
         pending: deque[tuple[int, Command]] = deque()  # (first step it applies to, command)
         outcome = Outcome.RUNNING
         k = 0
         while True:
             t = k * dt
+            if faults:
+                key = tuple(f.param_epoch(t) for f in faults)
+                if key != epochs:
+                    phys, epochs = cfg, key
+                    for f in faults:
+                        phys = f.modify_params(t, phys)
             mp = mass_properties(x[PROP], cfg)
             contact = contact_loads(x, mp, cfg.legs)
             event = monitor.update(t, x, contact)
             done = event is not None or (n_max is not None and k >= n_max)
             if self.sensors is not None and not done:
-                self._sense(t, x, applied)
+                self._sense(t, x, applied, phys)
             if not done and k % ctrl_every == 0:
                 pending.append((k + delay_steps, self._call_controller(t, x, mp)))
             while pending and pending[0][0] <= k:
-                applied = pending.popleft()[1]
+                raw = applied = pending.popleft()[1]
+            if faults:
+                applied = raw
+                for f in faults:
+                    applied = f.apply_command(t, applied)
 
             keep = event is not None or done or logger.wants_row()
-            thrust = float(np.linalg.norm(propulsion(x, applied, cfg, mp).force_B)) if keep else 0.0
+            thrust = 0.0
+            if keep:
+                thrust = float(np.linalg.norm(propulsion(x, applied, phys, mp).force_B))
             logger.log(
                 t,
                 x,
@@ -151,7 +171,7 @@ class Simulation:
 
             cmd = applied
             x = rk4_step(
-                lambda tt, xx, c=cmd: vehicle_derivative(tt, xx, c, cfg, self.env), t, x, dt
+                lambda tt, xx, c=cmd, p=phys: vehicle_derivative(tt, xx, c, p, self.env), t, x, dt
             )
             self.env.wind.advance(dt)
             k += 1

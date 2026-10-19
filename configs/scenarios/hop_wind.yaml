@@ -1,0 +1,8 @@
+name: hop_wind
+vehicle: configs/vehicle_default.yaml
+seed: 0
+estimation: ekf
+t_max: 60
+mission: {target_alt: 10, hover_time: 3, target_xy: [3, 0]}
+wind: {mean: [2, 0, 0], gust_sigma: 1.0, gust_tau: 3.0}
+command_delay: 0.02

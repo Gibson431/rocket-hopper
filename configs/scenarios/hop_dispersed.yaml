@@ -1,0 +1,15 @@
+name: hop_dispersed
+vehicle: configs/vehicle_default.yaml
+seed: 0
+estimation: ekf
+t_max: 60
+mission: {target_alt: 10, hover_time: 3, target_xy: [3, 0]}
+wind: {mean: [0, 0, 0], gust_sigma: 0.5, gust_tau: 3.0}
+command_delay: 0.01
+dispersions:
+  dry_mass: {dist: normal, sigma_frac: 0.03}
+  com_z: {dist: normal, sigma: 0.02}
+  thrust_scale: {dist: normal, sigma_frac: 0.03}
+  wind_mean: {dist: uniform, low: [-4, -4, 0], high: [4, 4, 0]}
+  gyro_bias: {dist: normal, sigma_dps: 0.1}
+  initial_pos: {dist: normal, sigma: [0.2, 0.2, 0]}
