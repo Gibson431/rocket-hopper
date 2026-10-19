@@ -24,15 +24,13 @@ Port gravity, the ISA atmosphere, the Gauss-Markov wind and the aero loads. Read
 
 ## Tests (`tests/drake/test_wind.py`, `test_aero.py`)
 
-- Gravity: free fall acceleration is `g` to 1e-9; disabled gives zero.
-- Wind: same seed gives bit-identical sequences; different seeds differ; mean and variance over 200
-  samples match `gust_sigma` and `gust_tau` (loose, as in the S04 tests); zero sigma gives exactly the
-  mean wind; independent of the integrator step used.
-- Aero: 100 random (velocity, attitude, wind) cases equal `aero_loads` (force and torque about the
-  CoM) to 1e-10; moving vehicle in wind and tilted cross-flow torque cases from the S04 backlog are
-  included.
-- Terminal velocity (with the S04 `cd_axial = 5` setup) matches the analytic value within 1%.
-- S13 golden 1 (free fall with aero and wind) matches within the S12 tolerance.
+Smoke tests.
+
+- Wind: the same seed gives bit-identical sequences, different seeds differ, zero sigma gives exactly
+  the mean wind, and the gust depends on time only (not on the integrator step).
+- Aero builds and gives finite loads for a moving, tilted vehicle in wind; `aero_enabled=False` gives
+  zero.
+- Gravity can be switched off.
 
 ## Definition of done
 

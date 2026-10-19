@@ -99,7 +99,6 @@ design (for example the state conversion round trip), write it for S14 instead a
 - `docs/DRAKE_DESIGN.md` answers all questions (1-9 and 9a), and records the Drake wheel footprint
   (about 150 MB pydrake plus a transitive 46 MB `mosek`; Linux and macOS wheels only, to the best of
   our knowledge) and the interpreter used with a Decision and measurements.
-- Tolerances for the parity tests in S14-S20 are proposed from measured legacy self-convergence
-  (legacy at `dt` vs `dt/2`), not guessed.
+- (Dropped: the S13 goldens and parity tests are no longer part of the plan; the tolerance table is background only.)
 - `uv run pytest` and `uv run ruff check .` pass with the dependency added.
 - Go/no-go recorded in Decisions. Progress tracker updated per `docs/AGENT_START.md`.
