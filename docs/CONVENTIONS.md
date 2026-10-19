@@ -147,6 +147,20 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
   gets those columns appended to the sim log (before `event`); `EstimatedController` logs `est_*` and
   `sig_*` (16 one-sigma values, error-state order).
 
+## Scenarios, faults, Monte Carlo (S11)
+
+- `hopper.scenario`: strict pydantic `Scenario` (YAML in `configs/scenarios/`), `load_scenario`,
+  `build_simulation(scenario, seed, dispersions)`, `sample_dispersions(scenario, seed)` (a pure function
+  of the seed), `run_scenario(scenario, seed, dispersed)`. Controller and EKF are built from the
+  *nominal* vehicle config; dispersions and faults change only the simulated truth.
+- `hopper.sim.faults`: `Fault` hooks `apply_command`, `modify_params` (+ `param_epoch`),
+  `modify_sensors`; `Simulation(..., faults=())` applies them, and with no faults the engine takes
+  the original path. Faults act on what the actuators/sensors see, never on the controller's inputs
+  directly.
+- `hopper.analysis.monte_carlo.run_monte_carlo(path, n, base_seed, workers, out_dir)`: run seeds come
+  from `run_seeds(base_seed, n)`; a seed fixes dispersions, noise and gusts, so
+  `scripts/run_scenario.py <scenario> --seed S --dispersed` reproduces run S exactly.
+
 ## Randomness
 
 `numpy.random.Generator` passed explicitly (`rng`). Never use the global numpy RNG. Seeds are

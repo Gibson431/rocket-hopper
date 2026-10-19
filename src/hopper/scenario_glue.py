@@ -82,6 +82,10 @@ class HopSummary:
     flight_time: float  # s, from first lift-off to first touchdown
     fuel_used: float  # kg
     t_end: float
+    touchdown_hspeed: float = 0.0  # m/s, horizontal speed just before first contact
+    max_tilt: float = 0.0  # rad, over the whole run
+    max_gimbal: float = 0.0  # rad, largest |gimbal angle| on either axis
+    touchdown_index: int = 0  # log row of the first touchdown
 
 
 def run_hop(
@@ -130,15 +134,21 @@ def run_hop(
     return res, summarize_hop(res, cfg, mission)
 
 
-def summarize_hop(res, cfg: VehicleConfig, mission: MissionParams) -> HopSummary:
+def summarize_hop(
+    res, cfg: VehicleConfig, mission: MissionParams, origin_xy: tuple[float, float] = (0.0, 0.0)
+) -> HopSummary:
     log = res.log
     prop = log["prop"].to_numpy()
     com = np.array([mass_properties(p, cfg).com_z for p in prop])
     foot = log["pos_z"].to_numpy() - com - cfg.legs.length
-    q = log[["quat_w", "quat_x", "quat_y", "quat_z"]].iloc[-1].to_numpy()
+    q_all = log[["quat_w", "quat_x", "quat_y", "quat_z"]].to_numpy()
+    q = q_all[-1]
     tilt = float(np.arccos(np.clip(1 - 2 * (q[1] ** 2 + q[2] ** 2), -1.0, 1.0)))
     last = log.iloc[-1]
-    err = np.hypot(last.pos_x - mission.target_xy[0], last.pos_y - mission.target_xy[1])
+    err = np.hypot(
+        last.pos_x - origin_xy[0] - mission.target_xy[0],
+        last.pos_y - origin_xy[1] - mission.target_xy[1],
+    )
 
     airborne = np.flatnonzero(foot > 0.1)
     contact = np.flatnonzero((log["n_contacts"].to_numpy() > 0) & (np.arange(len(log)) > 0))
@@ -154,4 +164,10 @@ def summarize_hop(res, cfg: VehicleConfig, mission: MissionParams) -> HopSummary
         flight_time=float(log["t"].iloc[k_td] - log["t"].iloc[first_air]),
         fuel_used=float(prop[0] - prop[-1]),
         t_end=res.t_end,
+        touchdown_hspeed=float(
+            np.hypot(log["vel_x"].iloc[max(k_td - 1, 0)], log["vel_y"].iloc[max(k_td - 1, 0)])
+        ),
+        max_tilt=float(np.max(2 * np.arcsin(np.clip(np.hypot(*q_all[:, 1:3].T), 0.0, 1.0)))),
+        max_gimbal=float(np.abs(log[["gim_x", "gim_y"]].to_numpy()).max()),
+        touchdown_index=k_td,
     )
