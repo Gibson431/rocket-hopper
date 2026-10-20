@@ -8,6 +8,7 @@ from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
 from hopper.dynamics.vehicle import vehicle_derivative
+from hopper.math3d import quat_error
 from hopper.scenario_glue import run_hop
 from hopper.sim.engine import Simulation
 from hopper.sim.events import Outcome
@@ -194,5 +195,19 @@ def test_closed_loop_ekf_hop_lands_with_estimation_errors_in_the_s10_bounds(cfg)
     rms = lambda a: float(np.sqrt((a**2).sum(axis=1).mean()))  # noqa: E731
     assert rms(pos) < 0.5
     assert rms(vel) < 0.1
+    q = df[[f"quat_{a}" for a in "wxyz"]].to_numpy()
+    qe = df[[f"est_quat_{a}" for a in "wxyz"]].to_numpy()
+    att = np.array([quat_error(a, b) for a, b in zip(q, qe, strict=True)])
+    assert np.degrees(rms(att)) < 0.5
     assert np.abs(df["mass"] - df["est_mass"]).max() < 0.5
     assert sum(c.startswith("sig_") for c in res.log.columns) == 16
+
+
+def test_closed_loop_a_second_sensor_run_repeats_the_noise_stream(cfg):
+    ctl = Recorder()
+    sim = drake_sim(cfg, ctl, seed=2)
+    sim.run(0.3)
+    first = np.array([s.gyro for _, s in ctl.calls if s.gyro is not None])
+    sim.run(0.3)
+    second = np.array([s.gyro for _, s in ctl.calls if s.gyro is not None])
+    assert len(first) > 10 and np.array_equal(first, second)
