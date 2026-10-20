@@ -45,6 +45,7 @@ class DrakeSimulation:
         self.x0 = np.array(x0, dtype=np.float64)
         self.log_decimation = log_decimation
         self.seed = seed_of(rng)
+        self.context = None
         self.rig = build_diagram(cfg, controller, env, rng, command_delay, perfect_state)
 
     def run(self, t_end: float | None = None) -> SimResult:
@@ -60,6 +61,7 @@ class DrakeSimulation:
         rig.host.reset()
         rig.monitor.reset()
         sim.Initialize()
+        self.context = ctx  # final state of the last run, for inspection
         logger = DrakeLogger(rig, cfg, self.log_decimation, self.seed)
         engine_ctx = rig.engine.GetMyContextFromRoot(ctx)
         plant_ctx = rig.plant.GetMyMutableContextFromRoot(ctx)

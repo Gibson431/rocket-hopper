@@ -29,8 +29,8 @@ class DrakeLogger:
     def record(self, root_context, t: float, event: Outcome | None) -> None:
         rig = self._rig
         keep = event is not None or self._logger.wants_row()
-        if not keep:  # advances the decimation counter without reading anything
-            self._logger.log(t, np.zeros(19), 0.0, 0.0, (0.0, (0.0, 0.0), 0.0), 0.0, 0, None)
+        if not keep:
+            self._logger.skip()
             return
         x = to_legacy_state(rig.plant, rig.plant.GetMyContextFromRoot(root_context))
         engine_state = (

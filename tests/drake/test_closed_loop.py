@@ -7,6 +7,7 @@ import pytest
 
 from hopper.analysis.logger import COLUMNS
 from hopper.config import load_vehicle
+from hopper.drake.controller_host import estimate_from_plant_state
 from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
@@ -168,6 +169,41 @@ def test_logged_state_starts_at_the_initial_state_and_mass_follows_the_propellan
     assert last["prop"] < first["prop"]
     assert last["mass"] == pytest.approx(mass_properties(last["prop"], cfg).mass, abs=1e-9)
     assert last["thrust"] == pytest.approx(cfg.engine.thrust_max * last["thr"])
+
+
+def test_perfect_state_estimate_maps_origin_state_to_com_position_velocity_and_body_rate(cfg):
+    c = mass_properties(cfg.tank.prop_mass_initial, cfg).com_z
+    prop = cfg.tank.prop_mass_initial
+    # upright, body rate 1 rad/s about x: the origin moves at (0, c, 0) when the CoM is at rest
+    s = np.array([1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, c, 0.0])
+    est = estimate_from_plant_state(s, prop, cfg, 0.25)
+    assert est.t == 0.25
+    assert est.pos == pytest.approx([0, 0, c], abs=1e-12)
+    assert est.vel == pytest.approx([0, 0, 0], abs=1e-12)
+    assert est.omega == pytest.approx([1, 0, 0], abs=1e-12)
+    assert est.mass == pytest.approx(mass_properties(prop, cfg).mass)
+    # pitched 90 deg about y: z_B points along +x, world rate (0, 2, 0) is body rate (0, 2, 0)
+    h = np.sqrt(0.5)
+    s = np.array([h, 0, h, 0, 1, 2, 3, 0, 2, 0, 0, 0, 0.0])
+    est = estimate_from_plant_state(s, prop, cfg, 0.0)
+    assert est.pos == pytest.approx([1 + c, 2, 3], abs=1e-12)
+    assert est.vel == pytest.approx([0, 0, -2 * c], abs=1e-12)  # w x r = (0,2,0) x (c,0,0)
+    assert est.omega == pytest.approx([0, 2, 0], abs=1e-12)
+    assert est.quat == pytest.approx([h, 0, h, 0])
+
+
+def test_plant_inertia_follows_the_burn_at_the_step_midpoint(cfg):
+    sim = make_sim(cfg, CountingController(Command(1.0, np.zeros(2), 0.0)))
+    res = sim.run(1.0)
+    dt, last = cfg.sim.dt, res.log.iloc[-1]
+    body = sim.rig.plant.GetBodyByName("hopper")
+    pctx = sim.rig.plant.GetMyContextFromRoot(sim.context)
+    mass = body.CalcSpatialInertiaInBodyFrame(pctx).get_mass()
+    # the last write used the propellant half a step before the final state
+    mdot = last["thrust"] / (cfg.engine.isp * 9.80665)
+    expected = mass_properties(last["prop"] + mdot * dt * 0.5, cfg).mass
+    assert mass == pytest.approx(expected, abs=2e-6)
+    assert abs(mass - mass_properties(last["prop"], cfg).mass) > 1e-5  # distinguishes the midpoint
 
 
 def test_controller_log_hook_columns_are_appended_before_the_event_column(cfg):
