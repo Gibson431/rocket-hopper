@@ -1,6 +1,13 @@
 import numpy as np
 import pytest
-from pydrake.all import ConstantVectorSource, DiagramBuilder, Simulator
+from pydrake.all import (
+    AbstractValue,
+    ConstantVectorSource,
+    DiagramBuilder,
+    ExternallyAppliedSpatialForce,
+    Simulator,
+    SpatialForce,
+)
 
 from hopper.drake.aero import AeroLoads
 from hopper.drake.combiner import ForceCombiner
@@ -78,12 +85,12 @@ def test_rotation_about_cp_drag_uses_com_velocity_not_pivot_velocity(cfg):
 def test_force_combiner_concatenates_forces_from_all_inputs(cfg):
     comb = ForceCombiner(2)
     ctx = comb.CreateDefaultContext()
-    from pydrake.all import AbstractValue, ExternallyAppliedSpatialForce
-
     for i in range(2):
         f = ExternallyAppliedSpatialForce()
+        f.F_Bq_W = SpatialForce(tau=np.zeros(3), f=[float(i + 1), 0.0, 0.0])
         comb.get_input_port(i).FixValue(ctx, AbstractValue.Make([f]))
-    assert len(comb.get_output_port().Eval(ctx)) == 2
+    out = comb.get_output_port().Eval(ctx)
+    assert [o.F_Bq_W.translational()[0] for o in out] == [1.0, 2.0]
 
 
 def test_gravity_can_be_switched_off(cfg):
@@ -116,3 +123,34 @@ def test_full_diagram_with_wind_and_aero_runs_finite(cfg):
     set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), _moving_tilted(), cfg)
     sim.AdvanceTo(0.5)
     assert np.all(np.isfinite(plant.GetPositionsAndVelocities(plant.GetMyContextFromRoot(ctx))))
+
+
+def test_density_is_clamped_below_sea_level_and_above_11_km(cfg):
+    def drag(z):
+        x = _state([0, 0, z], vel=[0, 0, 10.0])
+        return _eval(cfg, x).F_Bq_W.translational()[2]
+
+    assert drag(-50.0) == pytest.approx(drag(0.0), rel=1e-6)
+    assert drag(20000.0) == pytest.approx(drag(11000.0), rel=1e-6)
+    assert abs(drag(11000.0)) < abs(drag(0.0))
+
+
+def test_drag_on_a_tilted_vehicle_in_a_crosswind_weathercocks_the_nose_into_the_wind(cfg):
+    # Nose upright, wind from +x: relative air moves toward -x, CP above the CoM pushes the top -x,
+    # which is a torque about +y.
+    builder = DiagramBuilder()
+    plant, _ = build_vehicle_plant(cfg, builder, gravity_enabled=False)
+    aero = builder.AddSystem(AeroLoads(cfg, plant))
+    wsrc = builder.AddSystem(ConstantVectorSource([20.0, 0.0, 0.0]))
+    psrc = builder.AddSystem(ConstantVectorSource([cfg.tank.prop_mass_initial]))
+    builder.Connect(plant.get_state_output_port(), aero.get_plant_state_input_port())
+    builder.Connect(wsrc.get_output_port(), aero.get_wind_input_port())
+    builder.Connect(psrc.get_output_port(), aero.get_propellant_input_port())
+    builder.Connect(aero.get_force_output_port(), plant.get_applied_spatial_force_input_port())
+    sim = Simulator(builder.Build())
+    ctx = sim.get_mutable_context()
+    set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), _state([0, 0, 50.0]), cfg)
+    sim.AdvanceTo(0.2)
+    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    assert x[3] > 0.0  # dragged along the wind
+    assert x[11] > 0.0  # omega_y: weathercock torque about the CoM

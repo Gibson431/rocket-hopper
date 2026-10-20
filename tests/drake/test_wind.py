@@ -1,7 +1,10 @@
 import numpy as np
 from pydrake.all import DiagramBuilder, Simulator
 
+from hopper.drake.plant import build_vehicle_plant
+from hopper.drake.sim import make_simulator
 from hopper.drake.wind import WindSource
+from hopper.dynamics.environment import Wind
 
 
 def _run(seed, sigma=2.0, mean=(1.0, -2.0, 0.5), t_end=1.0, chunks=1, tau=3.0):
@@ -46,3 +49,42 @@ def test_gust_is_stationary_ou_with_requested_sigma():
         sim.AdvanceTo(0.05 * k)
         samples.append(wind.get_wind_output_port().Eval(wind.GetMyContextFromRoot(ctx)).copy())
     assert abs(np.std(np.array(samples)) - 2.0) < 0.2
+
+
+def test_gust_sequence_matches_the_legacy_wind_discretisation():
+    mean, sigma, tau, dt = np.array([1.0, -2.0, 0.5]), 2.0, 3.0, 1e-3
+    legacy = Wind(mean, sigma, tau, None)
+    legacy.reset(7)
+    for _ in range(500):
+        legacy.advance(dt)
+    # sample between updates so the event at exactly t = 0.5 s is not a boundary case
+    assert np.array_equal(_run(7, t_end=0.5005)[-1], legacy.velocity(0.5, np.zeros(3)))
+
+
+def test_same_system_replays_the_same_sequence_in_a_second_simulator():
+    builder = DiagramBuilder()
+    wind = builder.AddSystem(WindSource(np.zeros(3), 2.0, 3.0, 4))
+    diagram = builder.Build()
+    outs = []
+    for _ in range(2):
+        sim = Simulator(diagram)
+        sim.AdvanceTo(0.3)
+        ctx = wind.GetMyContextFromRoot(sim.get_context())
+        outs.append(wind.get_wind_output_port().Eval(ctx).copy())
+    assert np.array_equal(outs[0], outs[1])
+
+
+def test_gust_is_the_same_under_different_integrators_and_repeated_evaluation(cfg):
+    results = []
+    for fixed in (True, False):
+        builder = DiagramBuilder()
+        plant, _ = build_vehicle_plant(cfg, builder)
+        wind = builder.AddSystem(WindSource(np.zeros(3), 2.0, 3.0, 9))
+        diagram = builder.Build()
+        sim = make_simulator(diagram, dt=1e-3) if fixed else Simulator(diagram)
+        sim.AdvanceTo(0.2)
+        ctx = wind.GetMyContextFromRoot(sim.get_context())
+        first = wind.get_wind_output_port().Eval(ctx).copy()
+        assert np.array_equal(first, wind.get_wind_output_port().Eval(ctx))
+        results.append(first)
+    assert np.array_equal(results[0], results[1])

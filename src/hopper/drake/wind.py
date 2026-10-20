@@ -14,15 +14,22 @@ class WindSource(LeafSystem):
         super().__init__()
         self._mean = np.asarray(mean_i, dtype=float)
         self._sigma = gust_sigma
+        self._seed = seed
         self._rng = np.random.default_rng(seed)
         self._phi = np.exp(-dt / gust_tau)
         self._gain = gust_sigma * np.sqrt(1.0 - self._phi**2)
         self._gust_index = self.DeclareDiscreteState(BasicVector(np.zeros(3)))
-        self.DeclarePeriodicDiscreteUpdateEvent(dt, 0.0, self._advance)
+        # First update at t = dt: the gust at t = k dt equals legacy Wind after k advance(dt) calls.
+        self.DeclarePeriodicDiscreteUpdateEvent(dt, dt, self._advance)
+        # Replay the same stream when a simulator is initialised again from this system.
+        self.DeclareInitializationPublishEvent(self._reseed)
         self._port = self.DeclareVectorOutputPort("wind", 3, self._calc_wind)
 
     def get_wind_output_port(self):
         return self._port
+
+    def _reseed(self, context):
+        self._rng = np.random.default_rng(self._seed)
 
     def _advance(self, context, discrete_state):
         if self._sigma == 0.0:
