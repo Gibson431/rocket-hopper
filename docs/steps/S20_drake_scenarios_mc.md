@@ -1,5 +1,7 @@
 # S20: Scenarios and Monte Carlo on Drake
 
+> **Dropped (2026-10-21):** not implemented; the legacy simulator was removed in S22 instead.
+
 **Depends on:** S19. **Effort:** 2 days.
 
 ## Context

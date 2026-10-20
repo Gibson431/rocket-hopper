@@ -5,7 +5,7 @@ from pydrake.all import ConstantVectorSource, DiagramBuilder
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.propulsion import Engine
 from hopper.drake.sim import make_simulator
-from hopper.drake.state import set_legacy_state, to_legacy_state
+from hopper.drake.state import set_state_vector, to_state_vector
 from hopper.types import make_state
 
 
@@ -22,7 +22,7 @@ def _build(cfg, cmd, prop=None, thrust_frac=0.0, quat=None):
     ctx = sim.get_mutable_context()
     prop = cfg.tank.prop_mass_initial if prop is None else prop
     x0 = make_state(pos=[0, 0, 50.0], vel=[0, 0, 0], quat=quat, omega=[0, 0, 0], prop=prop)
-    set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), x0, cfg)
+    set_state_vector(plant, plant.GetMyMutableContextFromRoot(ctx), x0, cfg)
     ectx = engine.GetMyMutableContextFromRoot(ctx)
     engine.set_actuator_state(ectx, prop=prop, thrust_frac=thrust_frac)
     return sim, plant, engine, ctx
@@ -34,7 +34,7 @@ def test_two_second_burn_is_finite_burns_propellant_and_thrust_stays_in_range(cf
     ectx = engine.GetMyContextFromRoot(ctx)
     prop = engine.get_propellant_output_port().Eval(ectx)[0]
     thrust = engine.get_thrust_output_port().Eval(ectx)[0]
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert np.all(np.isfinite(x)) and np.isfinite(prop)
     assert prop < cfg.tank.prop_mass_initial
     assert (
@@ -49,7 +49,7 @@ def test_two_second_burn_is_finite_burns_propellant_and_thrust_stays_in_range(cf
 def test_positive_gy_pushes_thrust_toward_plus_x_and_torques_about_minus_y(cfg):
     sim, plant, engine, ctx = _build(cfg, [1.0, 0.0, 0.05, 0.0])
     sim.AdvanceTo(0.1)  # short: the torque soon tilts the thrust away
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert x[3] > 0.0  # vx
     assert x[11] < 0.0  # omega_y
 
@@ -57,7 +57,7 @@ def test_positive_gy_pushes_thrust_toward_plus_x_and_torques_about_minus_y(cfg):
 def test_positive_gx_pushes_thrust_toward_minus_y_and_torques_about_minus_x(cfg):
     sim, plant, engine, ctx = _build(cfg, [1.0, 0.05, 0.0, 0.0])
     sim.AdvanceTo(0.1)  # short: the torque soon tilts the thrust away
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert x[4] < 0.0  # vy
     assert x[10] < 0.0  # omega_x
 
@@ -65,7 +65,7 @@ def test_positive_gx_pushes_thrust_toward_minus_y_and_torques_about_minus_x(cfg)
 def test_roll_torque_spins_the_vehicle_about_z(cfg):
     sim, plant, engine, ctx = _build(cfg, [0.0, 0.0, 0.0, 1.0])
     sim.AdvanceTo(0.5)
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert x[12] > 0.0
 
 
@@ -76,7 +76,7 @@ def test_empty_tank_gives_zero_thrust_and_propellant_stays_zero(cfg):
     ectx = engine.GetMyContextFromRoot(ctx)
     assert engine.get_thrust_output_port().Eval(ectx)[0] == 0.0
     assert engine.get_propellant_output_port().Eval(ectx)[0] == 0.0
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert x[5] < 0.0  # falling: no thrust
 
 
@@ -119,7 +119,7 @@ def test_thrust_follows_a_tilted_vehicle(cfg):
     q = [np.cos(np.pi / 4), 0.0, np.sin(np.pi / 4), 0.0]
     sim, plant, engine, ctx = _build(cfg, [1.0, 0.0, 0.0, 0.0], thrust_frac=1.0, quat=q)
     sim.AdvanceTo(0.05)
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert x[3] > 1.0
 
 
@@ -127,7 +127,7 @@ def test_gimbal_rate_stays_within_the_rate_limit(cfg):
     sim, plant, engine, ctx = _build(cfg, [1.0, 1.0, 0.0, 0.0])
     sim.AdvanceTo(0.04)
     rate = engine.GetMyContextFromRoot(ctx).get_continuous_state_vector().CopyToVector()[4]
-    assert rate <= 1.05 * cfg.engine.gimbal_rate_max  # state may overshoot one step, as in legacy
+    assert rate <= 1.05 * cfg.engine.gimbal_rate_max  # state may overshoot by one step
     assert rate > 0.9 * cfg.engine.gimbal_rate_max
 
 
@@ -135,7 +135,7 @@ def test_roll_torque_acts_about_the_body_z_axis_when_the_vehicle_is_tilted(cfg):
     q = [np.cos(np.pi / 4), 0.0, np.sin(np.pi / 4), 0.0]  # z_B along +x_I
     sim, plant, engine, ctx = _build(cfg, [0.0, 0.0, 0.0, 1.0], quat=q)
     sim.AdvanceTo(0.5)
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert x[12] > 0.5
     assert abs(x[10]) < 1e-6 and abs(x[11]) < 1e-6
 

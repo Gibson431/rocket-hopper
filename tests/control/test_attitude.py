@@ -5,13 +5,12 @@ from hopper.config import VehicleConfig
 from hopper.control.attitude import AttitudeController, AttitudeGains
 from hopper.control.attitude_test_controller import AttitudeHoldController
 from hopper.control.interface import StateFeedbackController
+from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
-from hopper.dynamics.propulsion import propulsion
 from hopper.math3d import quat_error, quat_from_axis_angle
 from hopper.scenario_glue import control_params_from_config
-from hopper.sim.engine import Simulation
-from hopper.types import GIM, Command, make_state
+from hopper.types import make_state
 
 IDENTITY = np.array([1.0, 0.0, 0.0, 0.0])
 ZERO3 = np.zeros(3)
@@ -133,25 +132,19 @@ def test_output_is_finite_for_degenerate_inputs(ctrl, params):
     assert np.all(np.isfinite(out.gimbal))
 
 
-# --- torque-to-gimbal mapping inverts the propulsion model ----------------------------------
+# --- torque-to-gimbal mapping inverts the thrust-vector geometry ----------------------------------
 
 
 @pytest.mark.parametrize("thrust", [1000.0, 1700.0, 2500.0])
 @pytest.mark.parametrize("tau", [(30.0, -20.0), (-45.0, 10.0), (5.0, 60.0)])
-def test_gimbal_command_produces_the_demanded_torque_in_propulsion_model(
-    cfg, params, ctrl, thrust, tau
-):
-    m = params.dry_mass + PROP_MASS
+def test_gimbal_command_produces_the_demanded_torque_about_the_com(cfg, params, ctrl, thrust, tau):
     mp = mass_properties(PROP_MASS, cfg)
-    gimbal = ctrl.torque_to_gimbal(np.array(tau), thrust, mp.com_z)
-    x = make_state(
-        [0, 0, 50], [0, 0, 0], None, [0, 0, 0], PROP_MASS, thr=thrust / cfg.engine.thrust_max
-    )
-    x[GIM] = gimbal
-    out = propulsion(x, Command(1.0, gimbal, 0.0), cfg, mp)
-    assert m == pytest.approx(mp.mass)
-    assert out.torque_B[0] == pytest.approx(tau[0], rel=1e-9)
-    assert out.torque_B[1] == pytest.approx(tau[1], rel=1e-9)
+    gx, gy = ctrl.torque_to_gimbal(np.array(tau), thrust, mp.com_z)
+    # Thrust direction of a gimbal (gx about x_B, gy about y_B); the pivot is com_z below the CoM.
+    force = thrust * np.array([np.cos(gx) * np.sin(gy), -np.sin(gx), np.cos(gx) * np.cos(gy)])
+    torque = np.cross([0.0, 0.0, -mp.com_z], force)
+    assert torque[0] == pytest.approx(tau[0], rel=1e-9)
+    assert torque[1] == pytest.approx(tau[1], rel=1e-9)
 
 
 def test_control_params_match_vehicle_config(cfg, params):
@@ -180,7 +173,7 @@ def test_hold_controller_satisfies_state_feedback_protocol(params, gains):
 def run_closed_loop(cfg, params, gains, q0, omega0=(0, 0, 0), t_end=5.0, delay=0.0, q_des=None):
     ctrl = AttitudeHoldController(params, gains, throttle=0.45, q_des=q_des)
     x0 = make_state([0, 0, 50], [0, 0, 0], q0, omega0, PROP_MASS, thr=0.45)
-    sim = Simulation(
+    sim = DrakeSimulation(
         cfg,
         ctrl,
         Environment.default(),

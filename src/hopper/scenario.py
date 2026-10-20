@@ -1,5 +1,5 @@
 """Declarative scenarios: a YAML file fixes the vehicle, mission, environment, faults and (for Monte
-Carlo) the dispersions. `build_simulation` turns one into a ready `Simulation`.
+Carlo) the dispersions. `build_simulation` turns one into a ready `DrakeSimulation`.
 
 The controller and the estimator are always built from the nominal vehicle config; dispersions and
 faults change only the simulated truth, so the flight software is flying a vehicle it mis-models.
@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, create_model
 
 from hopper.config import VehicleConfig, load_vehicle
 from hopper.control.mission import MissionController, MissionParams
+from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
 from hopper.estimated_controller import EstimatedController
@@ -26,8 +27,8 @@ from hopper.scenario_glue import (
     ekf_params_from_config,
     summarize_hop,
 )
-from hopper.sim.engine import SimResult, Simulation
 from hopper.sim.faults import AnyFault, Fault, GyroBias
+from hopper.sim.result import SimResult
 from hopper.types import make_state
 
 Vec3 = tuple[float, float, float]
@@ -200,7 +201,7 @@ def _true_config(nominal: VehicleConfig, disp: dict[str, float]) -> VehicleConfi
 
 @dataclass(frozen=True)
 class BuiltScenario:
-    sim: Simulation
+    sim: DrakeSimulation
     cfg: VehicleConfig  # the truth (dispersed)
     mission: MissionParams
     origin_xy: tuple[float, float]  # take-off point; mission targets are offsets from it
@@ -228,7 +229,7 @@ def _build(
     rng = np.random.default_rng(seed)
     wind = scenario.wind
     mean = [disp.get(k, m) for k, m in zip(("wind_e", "wind_n", "wind_u"), wind.mean, strict=True)]
-    env = Environment(wind=Wind(np.array(mean), wind.gust_sigma, wind.gust_tau, rng))
+    env = Environment(wind=Wind(np.array(mean), wind.gust_sigma, wind.gust_tau))
 
     controller = MissionController(control_params_from_config(nominal), mission)
     perfect = scenario.estimation == "perfect"
@@ -239,7 +240,7 @@ def _build(
     if "gyro_bias_x" in disp:
         bias = np.radians([disp[f"gyro_bias_{a}"] for a in "xyz"])
         faults.append(GyroBias(bias=tuple(map(float, bias))))
-    sim = Simulation(
+    sim = DrakeSimulation(
         cfg,
         controller,
         env,
@@ -258,8 +259,8 @@ def build_simulation(
     seed: int | None = None,
     dispersions: dict[str, float] | None = None,
     log_decimation: int = 10,
-) -> Simulation:
-    """A ready `Simulation`; `dispersions` come from `sample_dispersions` (none by default)."""
+) -> DrakeSimulation:
+    """A ready `DrakeSimulation`; `dispersions` come from `sample_dispersions` (none by default)."""
     return _build(scenario, seed, dispersions, log_decimation).sim
 
 

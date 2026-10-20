@@ -4,7 +4,7 @@ from pydrake.all import DiagramBuilder
 from hopper.drake.mass import MassUpdater
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
-from hopper.drake.state import set_legacy_state, to_legacy_state
+from hopper.drake.state import set_state_vector, to_state_vector
 from hopper.dynamics.mass_model import mass_properties
 from hopper.types import POS, PROP, QUAT, VEL, make_state
 
@@ -26,7 +26,7 @@ def test_plant_builds_and_is_finalised(cfg):
     )
 
 
-def test_plant_gravity_is_the_legacy_value(cfg):
+def test_plant_gravity_is_standard_gravity(cfg):
     _, plant, _ = _build(cfg)
     assert plant.gravity_field().gravity_vector()[2] == -9.80665
 
@@ -43,9 +43,9 @@ def test_one_second_of_free_fall_is_finite_and_ballistic(cfg):
         omega=[0, 0, 0],
         prop=cfg.tank.prop_mass_initial,
     )
-    set_legacy_state(plant, pctx, x0, cfg)
+    set_state_vector(plant, pctx, x0, cfg)
     sim.AdvanceTo(1.0)
-    x = to_legacy_state(plant, pctx)
+    x = to_state_vector(plant, pctx)
     assert np.all(np.isfinite(x))
     np.testing.assert_allclose(x[POS], [1.0, 0.0, 50.0 + 2.0 - 0.5 * 9.80665], atol=1e-9)
     np.testing.assert_allclose(x[VEL], [1.0, 0.0, 2.0 - 9.80665], atol=1e-9)
@@ -66,7 +66,7 @@ def test_free_fall_is_deterministic(cfg):
         diagram, plant, _ = _build(cfg)
         sim = make_simulator(diagram)
         pctx = plant.GetMyMutableContextFromRoot(sim.get_mutable_context())
-        set_legacy_state(
+        set_state_vector(
             plant,
             pctx,
             make_state(
@@ -79,7 +79,7 @@ def test_free_fall_is_deterministic(cfg):
             cfg,
         )
         sim.AdvanceTo(0.5)
-        out.append(to_legacy_state(plant, pctx))
+        out.append(to_state_vector(plant, pctx))
     assert np.array_equal(out[0], out[1])
 
 
@@ -109,9 +109,9 @@ def test_mass_update_keeps_com_state_continuous(cfg):
         omega=[0.2, -0.1, 0.4],
         prop=20.0,
     )
-    set_legacy_state(plant, ctx, x, cfg)
+    set_state_vector(plant, ctx, x, cfg)
     MassUpdater(plant, cfg).update(ctx, 12.0)
-    y = to_legacy_state(plant, ctx)
+    y = to_state_vector(plant, ctx)
     np.testing.assert_allclose(y[POS], x[POS], atol=1e-12)
     np.testing.assert_allclose(y[VEL], x[VEL], atol=1e-12)
     np.testing.assert_allclose(y[QUAT], x[QUAT], atol=1e-12)  # w > 0 here

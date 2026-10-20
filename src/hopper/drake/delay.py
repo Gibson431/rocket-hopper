@@ -1,4 +1,4 @@
-"""Command delay queue, in physics steps (same rule as the legacy engine)."""
+"""Command delay queue, in physics steps ."""
 
 from collections import deque
 

@@ -1,10 +1,10 @@
 import numpy as np
+import pytest
 from pydrake.all import DiagramBuilder, Simulator
 
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
 from hopper.drake.wind import WindSource
-from hopper.dynamics.environment import Wind
 
 
 def _run(seed, sigma=2.0, mean=(1.0, -2.0, 0.5), t_end=1.0, chunks=1, tau=3.0):
@@ -51,14 +51,30 @@ def test_gust_is_stationary_ou_with_requested_sigma():
     assert abs(np.std(np.array(samples)) - 2.0) < 0.2
 
 
-def test_gust_sequence_matches_the_legacy_wind_discretisation():
+def test_gust_autocorrelation_decays_with_tau():
+    sigma, tau, dt = 2.0, 1.0, 0.05
+    builder = DiagramBuilder()
+    wind = builder.AddSystem(WindSource(np.zeros(3), sigma, tau, 7, dt=dt))
+    sim = Simulator(builder.Build())
+    ctx = sim.get_mutable_context()
+    s = []
+    for k in range(1, 40001):
+        sim.AdvanceTo(dt * k + dt / 2)
+        s.append(wind.get_wind_output_port().Eval(wind.GetMyContextFromRoot(ctx))[0])
+    s = np.array(s)
+    for lag_t, expected in ((tau, np.exp(-1)), (2 * tau, np.exp(-2))):
+        k = round(lag_t / dt)
+        assert np.corrcoef(s[:-k], s[k:])[0, 1] == pytest.approx(expected, abs=0.05)
+
+
+def test_gust_sequence_is_the_exact_ou_recursion_on_the_seeded_stream():
     mean, sigma, tau, dt = np.array([1.0, -2.0, 0.5]), 2.0, 3.0, 1e-3
-    legacy = Wind(mean, sigma, tau, None)
-    legacy.reset(7)
+    rng, gust = np.random.default_rng(7), np.zeros(3)
+    phi = np.exp(-dt / tau)
     for _ in range(500):
-        legacy.advance(dt)
+        gust = phi * gust + sigma * np.sqrt(1.0 - phi**2) * rng.standard_normal(3)
     # sample between updates so the event at exactly t = 0.5 s is not a boundary case
-    assert np.array_equal(_run(7, t_end=0.5005)[-1], legacy.velocity(0.5, np.zeros(3)))
+    assert np.array_equal(_run(7, t_end=0.5005)[-1], mean + gust)
 
 
 def test_same_system_replays_the_same_sequence_in_a_second_simulator():

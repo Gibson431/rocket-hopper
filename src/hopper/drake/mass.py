@@ -28,7 +28,7 @@ class MassUpdater:
         self._body = plant.GetBodyByName(body_name)
 
     def update(self, plant_context, prop_mass: float, keep_com_state: bool = True) -> None:
-        """Set the inertia for `prop_mass`. The legacy state is the CoM, continuous when the
+        """Set the inertia for `prop_mass`. The state vector holds the CoM, continuous when the
         CoM moves inside the body, but Drake's state is the body origin; with `keep_com_state` the
         origin pose and velocity are rewritten so the CoM position and velocity do not jump."""
         plant, body = self._plant, self._body

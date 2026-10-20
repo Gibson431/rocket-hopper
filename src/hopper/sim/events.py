@@ -6,9 +6,17 @@ from enum import Enum, auto
 import numpy as np
 
 from hopper.config import VehicleConfig
-from hopper.dynamics.contact import ContactOutput
 from hopper.math3d import quat_to_dcm
 from hopper.types import OMEGA, POS, QUAT, VEL
+
+
+@dataclass(frozen=True)
+class ContactOutput:
+    force_I: np.ndarray  # noqa: N815  (3,) total contact force, inertial
+    torque_B: np.ndarray  # noqa: N815  (3,) about the CoM, body frame
+    foot_forces: np.ndarray  # (n,) normal force per foot (N)
+    any_contact: bool
+    base_strike: bool  # engine base (z = 0 on the vehicle) is below ground
 
 
 class Outcome(Enum):

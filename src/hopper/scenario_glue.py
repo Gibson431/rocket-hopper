@@ -7,11 +7,11 @@ import numpy as np
 from hopper.config import VehicleConfig
 from hopper.control.mission import MissionController, MissionParams
 from hopper.control.params import ControlParams
+from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
 from hopper.estimated_controller import EstimatedController
 from hopper.estimation.ekf import EkfParams
-from hopper.sim.engine import Simulation
 from hopper.sim.events import Outcome
 from hopper.types import make_state
 
@@ -98,13 +98,11 @@ def run_hop(
     log_decimation: int = 10,
     perfect_state: bool = True,
     ekf_params: EkfParams | None = None,
-    backend: str = "legacy",
 ):
     """Fly the hop. Returns `(SimResult, HopSummary)`.
 
     `perfect_state=False` flies on the EKF estimate built from the sensors (`ekf_params` default to
     `ekf_params_from_config(cfg)`) and adds `est_*` / `sig_*` columns to the log.
-    `backend` is "legacy" (`Simulation`) or "drake" (`DrakeSimulation`).
     """
     mission = mission or MissionParams()
     rng = np.random.default_rng(seed)
@@ -118,19 +116,11 @@ def run_hop(
         [0, 0, 0],
         cfg.tank.prop_mass_initial,
     )
-    env = Environment(wind=Wind(np.array(wind_mean), 0.0, 1.0, rng))
+    env = Environment(wind=Wind(np.array(wind_mean)))
     controller = MissionController(control_params_from_config(cfg), mission)
     if not perfect_state:
         controller = EstimatedController(ekf_params or ekf_params_from_config(cfg), controller)
-    if backend == "drake":
-        from hopper.drake.simulation import DrakeSimulation
-
-        simulation_type = DrakeSimulation
-    elif backend == "legacy":
-        simulation_type = Simulation
-    else:
-        raise ValueError(f"unknown backend {backend!r}")
-    sim = simulation_type(
+    sim = DrakeSimulation(
         cfg,
         controller,
         env,

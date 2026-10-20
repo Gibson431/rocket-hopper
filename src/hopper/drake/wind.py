@@ -1,6 +1,6 @@
 """Mean wind plus a first-order Gauss-Markov gust, as a Drake LeafSystem.
 
-Same exact discretisation as `hopper.dynamics.environment.Wind.advance`. The gust is discrete state
+Exact discretisation of the Ornstein-Uhlenbeck gust, valid for any step. The gust is discrete state
 advanced by a periodic update, so it is a function of time only: RK stages and
 output callbacks never draw random numbers (docs/DRAKE_DESIGN.md Q7).
 """
@@ -19,7 +19,7 @@ class WindSource(LeafSystem):
         self._phi = np.exp(-dt / gust_tau)
         self._gain = gust_sigma * np.sqrt(1.0 - self._phi**2)
         self._gust_index = self.DeclareDiscreteState(BasicVector(np.zeros(3)))
-        # First update at t = dt: the gust at t = k dt equals legacy Wind after k advance(dt) calls.
+        # First update at t = dt: the gust at t = k dt is k draws.
         self.DeclarePeriodicDiscreteUpdateEvent(dt, dt, self._advance)
         # Replay the same stream when a simulator is initialised again from this system.
         self.DeclareInitializationPublishEvent(self._reseed)

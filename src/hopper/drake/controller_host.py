@@ -38,7 +38,7 @@ class ControllerHost(LeafSystem):
 
     `faults` act on the command in force (`apply_command`), on every step from the held raw command,
     so a stuck gimbal ignores both later commands and the delay. Sensor mode keeps the newest
-    sample per field since the last controller call, as the legacy engine does."""
+    sample per field since the last controller call."""
 
     def __init__(
         self,

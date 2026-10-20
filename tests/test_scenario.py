@@ -6,6 +6,7 @@ import yaml
 from pydantic import ValidationError
 
 from hopper.control.mission import MissionParams
+from hopper.drake.simulation import DrakeSimulation
 from hopper.scenario import (
     Scenario,
     build_simulation,
@@ -14,7 +15,6 @@ from hopper.scenario import (
     sample_dispersions,
 )
 from hopper.scenario_glue import run_hop
-from hopper.sim.engine import Simulation
 from hopper.sim.events import Outcome
 from hopper.sim.faults import GimbalSlow, GimbalStuck, GpsOutage
 
@@ -88,12 +88,22 @@ def test_scenario_mission_defaults_match_mission_params(tmp_path):
     assert load_scenario(p).mission_params == MissionParams()
 
 
-def test_build_simulation_returns_a_simulation_with_the_faults(tmp_path):
+def test_build_simulation_returns_a_drake_simulation_with_the_faults(tmp_path):
     faults = [{"type": "engine_out", "at": 5.0}, {"type": "gps_outage", "start": 1, "duration": 2}]
     sim = build_simulation(load_scenario(_write(tmp_path, faults=faults)), seed=3)
-    assert isinstance(sim, Simulation)
+    assert isinstance(sim, DrakeSimulation)
     assert [f.type for f in sim.faults] == ["engine_out", "gps_outage"]
     assert sim.seed == 3
+
+
+@pytest.mark.parametrize("name", PROVIDED)
+def test_provided_scenarios_run_for_one_second(name):
+    scenario = load_scenario(SCENARIOS / f"{name}.yaml")
+    got = run_scenario(scenario.model_copy(update={"t_max": 1.0}), dispersed=True)
+    assert got.result.outcome is Outcome.RUNNING
+    # the estimate columns are NaN until the first controller call
+    truth = got.result.log.drop(columns="event").filter(regex=r"^(?!est_|sig_)")
+    assert np.isfinite(truth.to_numpy(dtype=float)).all()
 
 
 def test_seed_argument_overrides_the_scenario_seed(tmp_path):

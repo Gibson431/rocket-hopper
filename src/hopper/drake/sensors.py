@@ -1,10 +1,10 @@
-"""Sensors on the Drake diagram: the legacy `SensorSuite` driven from the plant state.
+"""Sensors on the Drake diagram: the `SensorSuite` driven from the plant state.
 
 One periodic update at the physics step samples every sensor and stores the delivered `SensorData`
 as abstract state. The suite owns the noise generators; they are drawn only in this update, never
 in an output callback (docs/DRAKE_DESIGN.md Q7). It is an unrestricted update on purpose: Drake
 runs unrestricted updates before the discrete ones at the same time, so the host's update at t_k
-reads the samples taken at t_k, as in the legacy engine (a test pins this).
+reads the samples taken at t_k (a test pins this).
 """
 
 import copy

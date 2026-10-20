@@ -10,9 +10,9 @@ If you must change anything here, update this file in the same change and log it
   `uv add <pkg>` / `uv add --dev <pkg>` to add dependencies (never edit the dependency lists by hand
   or use `pip`), `uv sync` to install, `uv run <cmd>` to run anything (pytest, ruff, scripts),
   and commit `uv.lock`. Do not create or activate a virtualenv manually.
-- Runtime deps: numpy, scipy, pydantic>=2, pyyaml, pandas, pyarrow, matplotlib.
+- Runtime deps: numpy, scipy, pydantic>=2, pyyaml, pandas, pyarrow, matplotlib, drake (`pydrake`, simulation side only).
 - Dev deps: pytest, hypothesis, ruff.
-- Write the EKF by hand (no filterpy). `drake` (pydrake) is added in S12 for the simulation side only (see `docs/PLAN.md`, "Drake port").
+- Write the EKF by hand (no filterpy). Drake is the only simulation backend (see `docs/PLAN.md`, "Drake port"). Flight software (`hopper.control`, `hopper.estimation`) and `hopper.types` / `hopper.math3d` import only the standard library, numpy, scipy and each other; `tests/test_import_boundary.py` enforces the allowlist.
 - Commands: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format .`.
 
 ## Units and frames
@@ -115,7 +115,7 @@ Models are frozen and reject unknown keys. `make_state` renormalises the quatern
 - `rcs`: `max_roll_torque`
 - `legs`: `count`, `radius` (foot circle), `length`, `stiffness`, `damping`, `friction`
 - `aero`: `cd_axial`, `cd_lateral`, `area_axial`, `area_lateral`, `cp_z`
-- `sensors`: `imu`, `baro`, `gps`, `lidar` groups (rate, latency, noise, range; SI units, rad). `SensorData.t` is the controller call time; samples carry sensor latency; `baro_alt` and `lidar_range` are relative to the CoM height. `vehicle_derivative(..., info=d)` fills `d["contact"]` (`ContactOutput`) and `d["specific_force_B"]`.
+- `sensors`: `imu`, `baro`, `gps`, `lidar` groups (rate, latency, noise, range; SI units, rad). `SensorData.t` is the controller call time; samples carry sensor latency; `baro_alt` and `lidar_range` are relative to the CoM height. `SensorSuite.sample` takes `info["specific_force_B"]`, which `drake.sensors.SensorsSystem` supplies.
 - `sim`: `dt` (default 0.001), `controller_rate`, `max_time`, and outcome thresholds (`v_crash`, `crash_tilt`, `tipover_tilt`, `land_*`, `max_range`, `max_alt`; see `hopper.sim.events`). `Command` rejects non-finite fields; throttle/roll ranges are clamped in `propulsion`
 
 Placeholder vehicle for tests: ~100 kg total (80 kg dry + 20 kg propellant), thrust_max 2500 N,
@@ -150,16 +150,30 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
 ## Scenarios, faults, Monte Carlo (S11)
 
 - `hopper.scenario`: strict pydantic `Scenario` (YAML in `configs/scenarios/`), `load_scenario`,
-  `build_simulation(scenario, seed, dispersions)`, `sample_dispersions(scenario, seed)` (a pure function
+  `build_simulation(scenario, seed, dispersions) -> DrakeSimulation`, `sample_dispersions(scenario, seed)` (a pure function
   of the seed), `run_scenario(scenario, seed, dispersed)`. Controller and EKF are built from the
   *nominal* vehicle config; dispersions and faults change only the simulated truth.
 - `hopper.sim.faults`: `Fault` hooks `apply_command`, `modify_params` (+ `param_epoch`),
-  `modify_sensors`; `Simulation(..., faults=())` applies them, and with no faults the engine takes
-  the original path. Faults act on what the actuators/sensors see, never on the controller's inputs
+  `modify_sensors`; `DrakeSimulation(..., faults=())` applies them, and with no faults the diagram has
+  no fault systems. Faults act on what the actuators/sensors see, never on the controller's inputs
   directly. `GyroBias` (constant offset) is internal to the `gyro_bias` dispersion, not a YAML fault.
 - `hopper.analysis.monte_carlo.run_monte_carlo(path, n, base_seed, workers, out_dir)`: run seeds come
   from `run_seeds(base_seed, n)`; a seed fixes dispersions, noise and gusts, so
   `scripts/run_scenario.py <scenario> --seed S --dispersed` reproduces run S exactly.
+
+## Package layout (after S22)
+
+- `hopper.drake`: the simulation (plant, engine, wind, aero, legs, events, sensors, controller host,
+  logger, `DrakeSimulation`, visualisation).
+- `hopper.dynamics`: `mass_model` (CoM and inertia vs propellant, used by the simulator, the sensors
+  and the controller glue) and `environment` (`G0`, ISA `atmosphere`, `Wind` and `Environment`, which
+  only *describe* the environment; `drake.wind.WindSource` draws the gusts).
+- `hopper.sim`: `events` (`Outcome`, `ContactOutput`, `check_events`, `EventMonitor`), `faults`,
+  `result` (`SimResult`, `config_hash`, `seed_of`).
+- `hopper.sensors`, `hopper.analysis` (logger, plots, Monte Carlo), `hopper.scenario`,
+  `hopper.scenario_glue` (`run_hop`, `summarize_hop`, parameter bridges), `hopper.estimated_controller`.
+- **Integrator rule:** fixed-step only, never adaptive: Drake RK3 at `cfg.sim.dt` (1 ms) via
+  `sim.make_simulator`. Mass is written between steps from the midpoint propellant mass.
 
 ## Drake package (`hopper.drake`, S14+)
 
@@ -167,13 +181,13 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
   or `pydrake` (tests enforce this). Decisions are in `docs/DRAKE_DESIGN.md`.
 - `plant.build_vehicle_plant(cfg, builder=None, finalize=True) -> (plant, scene_graph)`: one floating body
   `"hopper"`, continuous, gravity 9.80665. `sim.make_simulator(diagram, dt=1e-3)`: fixed-step RK3.
-- **Body-frame rule:** the Drake body origin is the gimbal pivot (base), not the CoM. The legacy state is
-  the CoM with the rate in the body frame; Drake holds origin position/velocity and a world-frame rate.
-  `state.to_legacy_state(plant, ctx)` / `set_legacy_state(plant, ctx, x, cfg)` convert (CoM offset read from
+- **Body-frame rule:** the Drake body origin is the gimbal pivot (base), not the CoM. The 19-element state vector of `hopper.types`
+  holds the CoM with the rate in the body frame; Drake holds origin position/velocity and a world-frame rate.
+  `state.to_state_vector(plant, ctx)` / `set_state_vector(plant, ctx, x, cfg)` convert (CoM offset read from
   the spatial inertia in the context; quaternion returned with w >= 0; PROP/THR/GIM/GIMR are 0, owned by other systems).
 - `mass.MassUpdater(plant, cfg).update(ctx, prop)` writes the full spatial inertia between `AdvanceTo` steps
   and keeps the CoM position/velocity continuous. The caller passes the step-midpoint propellant mass.
-- `propulsion.Engine(cfg, plant)` (S15): input ports `command` ([throttle, gx, gy, roll_torque]) and `plant_state`; outputs `spatial_forces` (thrust + roll torque at the pivot), `propellant` (kg), `thrust` (N). Continuous state = legacy slots 13..18. Details in PROGRESS.md Decisions.
+- `propulsion.Engine(cfg, plant)` (S15): input ports `command` ([throttle, gx, gy, roll_torque]) and `plant_state`; outputs `spatial_forces` (thrust + roll torque at the pivot), `propellant` (kg), `thrust` (N). Continuous state = state-vector slots 13..18. Details in PROGRESS.md Decisions.
 - `wind.WindSource(mean, sigma, tau, seed, dt)` (S16): output `wind` (3); gust is discrete state, a function of time only. `aero.AeroLoads(cfg, plant, aero_enabled)`: inputs `plant_state`, `wind`, `propellant`; output `spatial_forces`. `combiner.ForceCombiner(n)`: concatenates n force lists for the plant's applied-force port. `build_vehicle_plant(..., gravity_enabled=False)` switches gravity off.
 
 ## Randomness
@@ -198,8 +212,8 @@ One row per physics step (or decimated): `t`, the 19 state entries, true total m
   before `Finalize` (parameter mapping in the module docstring). `ContactObserver(plant, legs)` has
   inputs `plant_state`, `contact_results` and outputs `foot_forces` (n), `contact_count`,
   `total_force` (3, world), `base_strike`.
-- `hopper.drake.events.DrakeEventMonitor(plant, observer, cfg)`: `evaluate(root_context)` runs the
-  legacy `check_events`; `as_simulator_monitor(diagram)` is for `Simulator.set_monitor`; the outcome
+- `hopper.drake.events.DrakeEventMonitor(plant, observer, cfg)`: `evaluate(root_context)` runs
+  `check_events`; `as_simulator_monitor(diagram)` is for `Simulator.set_monitor`; the outcome
   is in `.outcome`.
 
 ## Drake closed loop (S18)
@@ -210,24 +224,23 @@ One row per physics step (or decimated): `t`, the 19 state entries, true total m
   `AeroLoads.plant_state`, `ContactObserver.plant_state`; `Engine.propellant` -> `AeroLoads.propellant`,
   `ControllerHost.propellant`; `WindSource.wind` -> `AeroLoads.wind`; `Engine.spatial_forces` and
   `AeroLoads.spatial_forces` -> `ForceCombiner` -> plant applied forces; plant contact results -> `ContactObserver`.
-  The wind seed is `int(rng.integers(2**32))`, the same first draw as the legacy `Simulation`.
+  The wind seed is `int(rng.integers(2**32))`, the first draw from `rng`.
 - `ControllerHost(cfg, controller, command_delay, perfect_state)` (inputs `plant_state`, `propellant`; output `command`, 4):
   one periodic update at the physics step runs the controller every `controller_rate` ticks, pushes the command
   into `delay.CommandQueue` (delay in physics steps, `round(delay / dt)`) and stores the one due as discrete state.
   Delay 0 acts on the step the command was computed. It forwards the controller's `log_columns` / `log_values()`.
-- `DrakeSimulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation, faults)` has the
-  legacy `Simulation` signature and `run(t_end) -> SimResult` (same log, `df.attrs`). `perfect_state=False` and
-  `faults` raise `NotImplementedError` until S19. Per step: event check on x_k (a terminal row gets no controller
+- `DrakeSimulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation, faults)` runs one
+  closed loop: `run(t_end) -> SimResult` (log and `df.attrs` as in the logging schema). Per step: event check on x_k (a terminal row gets no controller
   call), `AdvanceTo(t_k)` runs the host update, log row k, midpoint mass write, `AdvanceTo(t_k + dt)`.
-  `run` makes a fresh simulator each call. `run_hop(..., backend="drake")` selects it.
+  `run` makes a fresh simulator each call. `scenario_glue.run_hop` and `scenario.run_scenario` build it; there is no other backend.
 
 ## Drake sensors and faults (S19)
 
 - `hopper.drake.sensors.SensorsSystem(cfg, plant, rng, faults)`: inputs `plant_state`, `propellant`, `accel` (plant
   body spatial accelerations); output `sensors` (a `SensorData`). One periodic *unrestricted* update per physics step
-  runs the legacy `SensorSuite` (generators spawned from `rng` in the legacy order, after the wind seed draw) and the
+  runs the `SensorSuite` (generators spawned from `rng` after the wind seed draw) and the
   faults' `modify_sensors`. Drake runs unrestricted updates before discrete ones, so the host sees the samples of the
-  same step, as the legacy engine does. `specific_force(context)` is the IMU input (`R^T (a_com - g)`).
+  same step. `specific_force(context)` is the IMU input (`R^T (a_com - g)`).
 - `ControllerHost(..., faults=())` has a `sensors` input unless `perfect_state`; it keeps the newest sample per field
   between controller calls and applies the faults' `apply_command` to the held raw command on every step.
 - Parameter faults: the engine and RCS parameters are a numeric parameter of `Engine` (`set_config(context, cfg)`);

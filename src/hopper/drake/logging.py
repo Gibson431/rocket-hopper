@@ -5,16 +5,16 @@ import numpy as np
 from hopper.analysis.logger import Logger
 from hopper.config import VehicleConfig
 from hopper.drake.diagram import DrakeRig
-from hopper.drake.state import to_legacy_state
+from hopper.drake.state import to_state_vector
 from hopper.dynamics.mass_model import mass_properties
-from hopper.sim.engine import config_hash
 from hopper.sim.events import Outcome
+from hopper.sim.result import config_hash
 from hopper.types import GIM, GIMR, PROP, THR
 
 
 class DrakeLogger:
     """One row per physics step (every `decimation`-th, plus the row that carries an outcome).
-    Same columns and `df.attrs` as the legacy engine."""
+    Columns and `df.attrs` are those of the S06 `Logger`."""
 
     def __init__(self, rig: DrakeRig, cfg: VehicleConfig, decimation: int, seed: int | None):
         self._rig, self._cfg = rig, cfg
@@ -32,7 +32,7 @@ class DrakeLogger:
         if not keep:
             self._logger.skip()
             return
-        x = to_legacy_state(rig.plant, rig.plant.GetMyContextFromRoot(root_context))
+        x = to_state_vector(rig.plant, rig.plant.GetMyContextFromRoot(root_context))
         engine_state = (
             rig.engine.GetMyContextFromRoot(root_context)
             .get_continuous_state_vector()

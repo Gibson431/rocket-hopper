@@ -50,15 +50,15 @@ You may be a fresh agent with no memory of earlier sessions. Everything you need
   `hopper.sim`, `hopper.sensors`, `hopper.drake` or `pydrake`. It may import only `hopper.types` and
   `hopper.math3d`. The same holds for `src/hopper/estimation/`.
   This keeps it portable to Rust or C later and prevents cheating with true state.
+  `tests/test_import_boundary.py` enforces it as an allowlist (stdlib, numpy, scipy and those two).
 - Use `uv` for all environment and dependency work (`uv add`, `uv sync`, `uv run`); never `pip` or a
   hand-made venv. See CONVENTIONS.md "Tooling".
 - SI units everywhere. No hidden unit conversions.
 - All randomness goes through a `numpy.random.Generator` passed in explicitly. Runs with the same
   seed must be bit-reproducible.
-- Keep the simulation numerically honest: fixed-step integration (the legacy sim uses RK4 with the
-  quaternion renormalised each step; Drake has no RK4, so S12 chooses the Drake integrator and S22 rewrites
-  this rule). Never adaptive stepping in Monte Carlo runs unless S12 shows it is reproducible.
+- Keep the simulation numerically honest: fixed-step integration only (Drake RK3 at `cfg.sim.dt`,
+  see `drake/sim.py`). Never adaptive stepping, in Monte Carlo runs or anywhere else.
 - The simulator is not the product: Drake is the source of truth. Do not write unit tests for the
-  simulator or A/B comparisons against the legacy sim (S13 was dropped). Test the controller and
+  simulator or A/B comparisons against another simulator. Test the controller and
   estimator; for simulator code a smoke test (builds, runs, finite, deterministic) is enough.
 - Match the style of existing code. Keep comments short and explain why, not what.

@@ -1,8 +1,7 @@
 """Engine as a Drake LeafSystem: throttle lag, gimbal actuator, thrust and RCS force, mass flow.
 
-Same model as `hopper.dynamics.propulsion.propulsion`, rewritten with scalar math (no per-call Drake
-objects) because it runs in every RK stage (docs/DRAKE_DESIGN.md Q8).
-Continuous state is the legacy slots 13..18:
+Scalar math (no per-call Drake objects) because it runs in every RK stage (docs/DRAKE_DESIGN.md Q8).
+Continuous state is the state-vector slots 13..18:
 [prop, thrust fraction, gx, gy, gx_rate, gy_rate]. Thrust acts at the body origin, which is the
 gimbal pivot, so Drake produces the torque about the CoM itself (Q2).
 """
@@ -21,9 +20,9 @@ from pydrake.multibody.plant import MultibodyPlant
 
 from hopper.config import VehicleConfig
 from hopper.drake.state import BODY_NAME
+from hopper.dynamics.environment import G0
 from hopper.math3d import quat_to_dcm
 
-G0 = 9.80665
 # continuous state indices
 _PROP, _THR, _GX, _GY, _GXR, _GYR = range(6)
 # Engine parameters live in the context (not Python attributes) so that changing them, as a fault
