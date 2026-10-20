@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
-from pydrake.all import Diagram, DiagramBuilder
+from pydrake.all import Diagram, DiagramBuilder, Meshcat, MeshcatVisualizer
 from pydrake.multibody.plant import MultibodyPlant
 
 from hopper.config import VehicleConfig
@@ -53,17 +53,24 @@ def build_diagram(
     command_delay: float = 0.0,
     perfect_state: bool = True,
     faults: Sequence[Fault] = (),
+    visual: bool = True,
+    meshcat: Meshcat | None = None,
 ) -> DrakeRig:
     """The wind stream is seeded from `rng` exactly like the legacy `Simulation` does, then the
     sensors spawn their generators from it (the legacy order). With no faults and perfect state the
-    diagram has neither fault nor sensor systems."""
+    diagram has neither fault nor sensor systems. `visual=False` leaves out the illustration
+    geometry (dynamics are identical); `meshcat` adds a live visualizer (needs the geometry)."""
+    if meshcat is not None and not visual:
+        raise ValueError("a live Meshcat view needs visual=True")
     wind_seed = int(rng.integers(2**32))
     builder = DiagramBuilder()
     plant, scene_graph = build_vehicle_plant(
-        cfg, builder, finalize=False, gravity_enabled=env.gravity_enabled
+        cfg, builder, finalize=False, gravity_enabled=env.gravity_enabled, visual=visual
     )
     legs = add_legs(plant, scene_graph, cfg)
     plant.Finalize()
+    if meshcat is not None:
+        MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
 
     host = builder.AddSystem(
         ControllerHost(cfg, controller, command_delay, perfect_state, faults=faults)

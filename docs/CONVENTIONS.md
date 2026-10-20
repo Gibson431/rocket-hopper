@@ -233,3 +233,14 @@ One row per physics step (or decimated): `t`, the 19 state entries, true total m
 - Parameter faults: the engine and RCS parameters are a numeric parameter of `Engine` (`set_config(context, cfg)`);
   `DrakeSimulation.run` writes the effective config when a fault's `param_epoch` changes. With no faults and
   `perfect_state=True` the diagram has no sensor or fault systems. `build_diagram(..., faults=())`, `DrakeRig.sensors`.
+
+## Visualisation (S21)
+
+- `build_vehicle_plant(..., visual=True)` adds illustration-only geometry (no collision role, no dynamics effect);
+  `build_diagram(..., visual=, meshcat=)` and `DrakeSimulation(..., meshcat=)` add a live `MeshcatVisualizer`
+  (off by default; never in tests or Monte Carlo runs).
+- `hopper.drake.viz.replay(log, cfg, speed=1.0, meshcat=None, fps=60)` plays a log; `record_replay(log, cfg, path)`
+  writes a static HTML. The logged position is the CoM; the body frame is at the gimbal pivot.
+- `hopper.analysis.plots` functions take a log frame and return `Figure`s; `save_all(log, out_dir)` writes PNGs.
+  CLI: `scripts/plot_run.py LOG [--replay] [--html F] [--out DIR]`.
+
