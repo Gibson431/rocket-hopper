@@ -14,6 +14,7 @@ def build_vehicle_plant(
     builder: DiagramBuilder | None = None,
     finalize: bool = True,
     gravity_enabled: bool = True,
+    visual: bool = True,
 ):
     """Return (plant, scene_graph). The plant is continuous (`time_step=0`) with the full-propellant
     mass properties; `MassUpdater` changes them during a run. With no `builder` the plant stands
@@ -25,6 +26,10 @@ def build_vehicle_plant(
     plant.AddRigidBody("hopper", spatial_inertia(cfg.tank.prop_mass_initial, cfg))
     g = GRAVITY if gravity_enabled else 0.0  # matches Environment(gravity_enabled=False)
     plant.mutable_gravity_field().set_gravity_vector([0.0, 0.0, -g])
+    if visual and scene_graph is not None:  # illustration role only; see hopper.drake.viz
+        from hopper.drake.viz import add_visual_geometry
+
+        add_visual_geometry(plant, scene_graph, cfg)
     if finalize:
         plant.Finalize()
     return plant, scene_graph

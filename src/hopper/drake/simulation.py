@@ -8,6 +8,7 @@ sees x_k without a controller call; the next `AdvanceTo` runs the update, then i
 from collections.abc import Sequence
 
 import numpy as np
+from pydrake.all import Meshcat
 
 from hopper.config import VehicleConfig
 from hopper.control.interface import Controller, StateFeedbackController
@@ -35,6 +36,7 @@ class DrakeSimulation:
         command_delay: float = 0.0,
         log_decimation: int = 1,
         faults: Sequence[Fault] = (),
+        meshcat: Meshcat | None = None,
     ) -> None:
         if command_delay < 0:
             raise ValueError(f"command_delay must be >= 0, got {command_delay}")
@@ -46,7 +48,7 @@ class DrakeSimulation:
         self.seed = seed_of(rng)
         self.context = None
         self.rig = build_diagram(
-            cfg, controller, env, rng, command_delay, perfect_state, self.faults
+            cfg, controller, env, rng, command_delay, perfect_state, self.faults, meshcat=meshcat
         )
 
     def run(self, t_end: float | None = None) -> SimResult:
