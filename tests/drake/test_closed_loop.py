@@ -262,11 +262,6 @@ def test_controller_log_hook_columns_are_appended_before_the_event_column(cfg):
     assert res.log["probe_a"].iloc[0] == 1.0  # the controller had been called once at row 0
 
 
-def test_sensor_mode_and_faults_are_not_available_until_s19(cfg):
-    with pytest.raises(NotImplementedError):
-        make_sim(cfg, CountingController(), perfect_state=False)
-
-
 # --- the perfect-state hop (S09 acceptance thresholds) ---------------------------------------
 
 

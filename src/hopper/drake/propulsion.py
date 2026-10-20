@@ -26,6 +26,32 @@ from hopper.math3d import quat_to_dcm
 G0 = 9.80665
 # continuous state indices
 _PROP, _THR, _GX, _GY, _GXR, _GYR = range(6)
+# Engine parameters live in the context (not Python attributes) so that changing them, as a fault
+# does, invalidates cached outputs.
+_PARAMS = (
+    "thrust_max",
+    "thrust_min_frac",
+    "isp",
+    "throttle_tau",
+    "gimbal_max",
+    "gimbal_rate_max",
+    "gimbal_wn",
+    "gimbal_zeta",
+)
+
+
+def _param_vector(cfg: VehicleConfig) -> np.ndarray:
+    return np.array([getattr(cfg.engine, n) for n in _PARAMS] + [cfg.rcs.max_roll_torque])
+
+
+class _Params:
+    """Read-only view of the parameter vector with the config's field names."""
+
+    __slots__ = (*_PARAMS, "max_roll_torque")
+
+    def __init__(self, values):
+        for name, v in zip((*_PARAMS, "max_roll_torque"), values, strict=True):
+            setattr(self, name, float(v))
 
 
 class Engine(LeafSystem):
@@ -35,10 +61,9 @@ class Engine(LeafSystem):
 
     def __init__(self, cfg: VehicleConfig, plant: MultibodyPlant):
         super().__init__()
-        self._eng = cfg.engine
-        self._max_roll = cfg.rcs.max_roll_torque
         self._body_index = plant.GetBodyByName(BODY_NAME).index()
 
+        self.DeclareNumericParameter(BasicVector(_param_vector(cfg)))
         self._cmd_port = self.DeclareVectorInputPort("command", 4)
         self._state_port = self.DeclareVectorInputPort("plant_state", plant.num_multibody_states())
         initial = np.zeros(6)
@@ -74,20 +99,34 @@ class Engine(LeafSystem):
             np.array([prop, thrust_frac, *gimbal, *rate], dtype=float)
         )
 
-    def _thrust(self, s) -> float:
-        return self._eng.thrust_max * s[_THR] if s[_PROP] > 0.0 else 0.0
+    def set_config(self, context, cfg: VehicleConfig) -> None:
+        """Write the engine and RCS parameters of `cfg` (a parameter fault's effective config)."""
+        context.get_mutable_numeric_parameter(0).SetFromVector(_param_vector(cfg))
+
+    @staticmethod
+    def _params(context) -> _Params:
+        return _Params(context.get_numeric_parameter(0).CopyToVector())
+
+    @staticmethod
+    def _thrust(s, eng) -> float:
+        return eng.thrust_max * s[_THR] if s[_PROP] > 0.0 else 0.0
 
     def _calc_prop(self, context, out):
         out.SetAtIndex(0, max(context.get_continuous_state_vector().GetAtIndex(_PROP), 0.0))
 
     def _calc_thrust(self, context, out):
-        out.SetAtIndex(0, self._thrust(context.get_continuous_state_vector().CopyToVector()))
+        out.SetAtIndex(
+            0,
+            self._thrust(
+                context.get_continuous_state_vector().CopyToVector(), self._params(context)
+            ),
+        )
 
     def _calc_forces(self, context, out):
-        eng = self._eng
+        eng = self._params(context)
         s = context.get_continuous_state_vector().CopyToVector()
-        roll = min(max(self._cmd_port.Eval(context)[3], -1.0), 1.0) * self._max_roll
-        thrust = self._thrust(s)
+        roll = min(max(self._cmd_port.Eval(context)[3], -1.0), 1.0) * eng.max_roll_torque
+        thrust = self._thrust(s, eng)
         # The physical angle never exceeds the limit, even if the integrator overshoots it.
         gx = min(max(s[_GX], -eng.gimbal_max), eng.gimbal_max)
         gy = min(max(s[_GY], -eng.gimbal_max), eng.gimbal_max)
@@ -102,7 +141,7 @@ class Engine(LeafSystem):
         out.set_value([force])
 
     def DoCalcTimeDerivatives(self, context, derivatives):  # noqa: N802 (Drake override)
-        eng = self._eng
+        eng = self._params(context)
         s = context.get_continuous_state_vector().CopyToVector()
         cmd = self._cmd_port.Eval(context)
         has_prop = s[_PROP] > 0.0
@@ -113,7 +152,7 @@ class Engine(LeafSystem):
         else:
             thr_cmd = min(max(cmd[0], eng.thrust_min_frac), 1.0)
         d = np.zeros(6)
-        d[_PROP] = -self._thrust(s) / (eng.isp * G0)
+        d[_PROP] = -self._thrust(s, eng) / (eng.isp * G0)
         d[_THR] = (thr_cmd - s[_THR]) / eng.throttle_tau
 
         for i, (g, r, c) in enumerate(((s[_GX], s[_GXR], cmd[1]), (s[_GY], s[_GYR], cmd[2]))):
