@@ -12,6 +12,7 @@ from typing import Annotated, Literal
 
 import numpy as np
 import yaml
+from pydrake.all import Meshcat
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, create_model
 
 from hopper.config import VehicleConfig, load_vehicle
@@ -212,6 +213,7 @@ def _build(
     seed: int | None,
     dispersions: dict[str, float] | None,
     log_decimation: int,
+    meshcat: Meshcat | None = None,
 ) -> BuiltScenario:
     seed = scenario.seed if seed is None else seed
     disp = dispersions or {}
@@ -250,6 +252,7 @@ def _build(
         command_delay=scenario.command_delay,
         log_decimation=log_decimation,
         faults=faults,
+        meshcat=meshcat,
     )
     return BuiltScenario(sim, cfg, mission, (float(pos[0]), float(pos[1])))
 
@@ -277,10 +280,11 @@ def run_scenario(
     seed: int | None = None,
     dispersed: bool = False,
     log_decimation: int = 10,
+    meshcat: Meshcat | None = None,
 ) -> ScenarioRun:
     seed = scenario.seed if seed is None else seed
     disp = sample_dispersions(scenario, seed) if dispersed else {}
-    built = _build(scenario, seed, disp, log_decimation)
+    built = _build(scenario, seed, disp, log_decimation, meshcat)
     res = built.sim.run(scenario.t_max)
     summary = summarize_hop(res, built.cfg, built.mission, built.origin_xy)
     return ScenarioRun(res, summary, disp, seed)
