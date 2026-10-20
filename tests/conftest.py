@@ -7,9 +7,10 @@ from hopper.config import VehicleConfig, load_vehicle
 DEFAULT = Path(__file__).parent.parent / "configs" / "vehicle_default.yaml"
 
 
-# Default run = fast unit tests of math and logic (pre-commit friendly). Anything that flies a
-# scenario or closed loop, runs a long filter/vehicle trajectory, runs a statistical batch or
-# builds a Drake plant is a regression test: `uv run pytest -m ""` runs everything.
+# A regression test is any test that runs a simulation end to end (a scenario, a closed loop, a
+# full vehicle/filter trajectory, a statistical batch). A test that only brings up a plant or
+# subsystem and steps it once or a few times to see how it behaves is a unit test, even if it
+# builds Drake systems. The default run is the unit set; `uv run pytest -m ""` runs everything.
 REGRESSION_FILES = {
     "test_hop_scenario.py",
     "test_closed_loop.py",
@@ -18,8 +19,6 @@ REGRESSION_FILES = {
     "test_consistency.py",
     "test_engine.py",
     "test_faults.py",
-    "test_plant.py",
-    "test_state.py",
 }
 REGRESSION_TESTS = {
     # closed-loop controller runs
@@ -55,12 +54,6 @@ REGRESSION_TESTS = {
     "test_gps_noise_statistics",
     "test_gps_dropout_probability",
 }
-# same basename as a fast legacy unit test, so matched by directory too
-REGRESSION_PATHS = {
-    ("drake", "test_propulsion.py"),
-    ("drake", "test_wind.py"),
-    ("drake", "test_aero.py"),
-}
 REGRESSION_PREFIXES = ("test_closed_loop_",)
 
 
@@ -69,7 +62,6 @@ def pytest_collection_modifyitems(items):
         name = item.originalname or item.name
         if (
             item.path.name in REGRESSION_FILES
-            or (item.path.parent.name, item.path.name) in REGRESSION_PATHS
             or name in REGRESSION_TESTS
             or name.startswith(REGRESSION_PREFIXES)
         ):
