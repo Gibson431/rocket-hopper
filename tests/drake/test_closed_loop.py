@@ -37,11 +37,11 @@ class CountingController:
         return Command(0.0, np.zeros(2), 0.0)
 
 
-def make_sim(cfg, controller, seed=0, wind=None, gravity=False, aero=False, **kw):
+def make_sim(cfg, controller, seed=0, wind=None, gravity=False, aero=False, z0=HOVER_Z, **kw):
     rng = np.random.default_rng(seed)
     wind = wind or Wind.none()
     env = Environment(wind=wind, gravity_enabled=gravity, aero_enabled=aero)
-    x0 = make_state([0, 0, HOVER_Z], [0, 0, 0], None, [0, 0, 0], cfg.tank.prop_mass_initial)
+    x0 = make_state([0, 0, z0], [0, 0, 0], None, [0, 0, 0], cfg.tank.prop_mass_initial)
     return DrakeSimulation(cfg, controller, env, x0, rng, **kw)
 
 
@@ -169,6 +169,31 @@ def test_logged_state_starts_at_the_initial_state_and_mass_follows_the_propellan
     assert last["prop"] < first["prop"]
     assert last["mass"] == pytest.approx(mass_properties(last["prop"], cfg).mass, abs=1e-9)
     assert last["thrust"] == pytest.approx(cfg.engine.thrust_max * last["thr"])
+
+
+def test_gimbal_state_is_logged_in_its_own_columns(cfg):
+    late = Command(0.5, np.array([0.05, -0.03]), 0.0)
+    sim = make_sim(cfg, CountingController(late))
+    last = sim.run(0.3).log.iloc[-1]
+    es = sim.rig.engine.GetMyContextFromRoot(sim.context).get_continuous_state_vector()
+    es = es.CopyToVector()
+    assert (last["gim_x"], last["gim_y"]) == (es[2], es[3])
+    assert (last["gimr_x"], last["gimr_y"]) == (es[4], es[5])
+    assert last["gim_x"] > 0.04 and last["gim_y"] < -0.02
+    assert last["gimr_x"] != last["gim_x"] and last["gimr_y"] != last["gim_y"]
+
+
+def test_contact_force_and_count_are_zero_in_flight_and_carry_the_weight_at_rest(cfg):
+    from hopper.dynamics.mass_model import mass_properties
+
+    mp = mass_properties(cfg.tank.prop_mass_initial, cfg)
+    z0 = mp.com_z + cfg.legs.length + 0.3  # feet 0.3 m above the ground
+    log = make_sim(cfg, CountingController(), gravity=True, z0=z0).run(1.6).log
+    assert (log["contact_force"].iloc[:100] == 0.0).all()
+    assert (log["n_contacts"].iloc[:100] == 0).all()
+    last = log.iloc[-1]
+    assert last["n_contacts"] == cfg.legs.count
+    assert last["contact_force"] == pytest.approx(mp.mass * 9.80665, rel=0.05)
 
 
 def test_perfect_state_estimate_maps_origin_state_to_com_position_velocity_and_body_rate(cfg):
