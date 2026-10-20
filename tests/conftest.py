@@ -38,6 +38,10 @@ REGRESSION_TESTS = {
     "test_rocket_equation_delta_v_with_no_gravity",
     "test_terminal_velocity_matches_drag_balance",
     # filter runs against simulated trajectories
+    "test_drop_from_half_a_metre_settles_upright_without_bouncing",
+    "test_hard_five_metre_per_second_landing_stays_finite_without_rebound",
+    "test_a_gentle_drop_ends_the_run_as_landed",
+    "test_a_hard_landing_ends_the_run_as_crashed_immediately",
     "test_buffered_gps_latency_compensation_beats_naive_application",
     "test_returns_none_until_aligned_then_levels_the_attitude_and_zeroes_velocity",
     "test_constant_gyro_bias_is_estimated_within_10_percent_after_30_s_of_motion",
