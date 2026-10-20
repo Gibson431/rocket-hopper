@@ -25,6 +25,9 @@ class DrakeEventMonitor:
         self._last: Outcome | None = None
         self.outcome: Outcome | None = None
 
+    def reset(self) -> None:
+        self._state, self._last_t, self._last, self.outcome = EventState(), None, None, None
+
     def evaluate(self, root_context) -> Outcome | None:
         t = root_context.get_time()
         if t == self._last_t:  # the simulator may call twice per time; history advances once

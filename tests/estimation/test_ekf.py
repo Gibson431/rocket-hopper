@@ -4,10 +4,11 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from estimation_harness import Feeder, G, make_ekf, run
 
 from hopper.math3d import quat_from_axis_angle, quat_mul, quat_to_dcm
 from hopper.types import StateEstimate
+
+from .estimation_harness import Feeder, G, make_ekf, run
 
 DEG = np.pi / 180
 

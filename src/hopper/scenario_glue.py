@@ -98,11 +98,13 @@ def run_hop(
     log_decimation: int = 10,
     perfect_state: bool = True,
     ekf_params: EkfParams | None = None,
+    backend: str = "legacy",
 ):
     """Fly the hop. Returns `(SimResult, HopSummary)`.
 
     `perfect_state=False` flies on the EKF estimate built from the sensors (`ekf_params` default to
     `ekf_params_from_config(cfg)`) and adds `est_*` / `sig_*` columns to the log.
+    `backend` is "legacy" (`Simulation`) or "drake" (`DrakeSimulation`).
     """
     mission = mission or MissionParams()
     rng = np.random.default_rng(seed)
@@ -120,7 +122,15 @@ def run_hop(
     controller = MissionController(control_params_from_config(cfg), mission)
     if not perfect_state:
         controller = EstimatedController(ekf_params or ekf_params_from_config(cfg), controller)
-    sim = Simulation(
+    if backend == "drake":
+        from hopper.drake.simulation import DrakeSimulation
+
+        simulation_type = DrakeSimulation
+    elif backend == "legacy":
+        simulation_type = Simulation
+    else:
+        raise ValueError(f"unknown backend {backend!r}")
+    sim = simulation_type(
         cfg,
         controller,
         env,

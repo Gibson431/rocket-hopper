@@ -38,7 +38,7 @@ def config_hash(cfg: VehicleConfig) -> str:
     return hashlib.sha256(cfg.model_dump_json().encode()).hexdigest()[:16]
 
 
-def _seed_of(rng: np.random.Generator) -> int | None:
+def seed_of(rng: np.random.Generator) -> int | None:
     entropy = getattr(rng.bit_generator.seed_seq, "entropy", None)
     return entropy if isinstance(entropy, int) else None
 
@@ -69,7 +69,7 @@ class Simulation:
         self.command_delay = command_delay
         self.log_decimation = log_decimation
         self.faults = tuple(faults)
-        self.seed = _seed_of(rng)
+        self.seed = seed_of(rng)
         env.wind.reset(int(rng.integers(2**32)))
         self.sensors = None if perfect_state else SensorSuite(cfg, rng)
         self._latest: dict[

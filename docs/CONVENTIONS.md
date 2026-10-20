@@ -201,3 +201,22 @@ One row per physics step (or decimated): `t`, the 19 state entries, true total m
 - `hopper.drake.events.DrakeEventMonitor(plant, observer, cfg)`: `evaluate(root_context)` runs the
   legacy `check_events`; `as_simulator_monitor(diagram)` is for `Simulator.set_monitor`; the outcome
   is in `.outcome`.
+
+## Drake closed loop (S18)
+
+- `hopper.drake.diagram.build_diagram(cfg, controller, env, rng, command_delay, perfect_state) -> DrakeRig`
+  (diagram, plant, engine, host, wind, aero, observer, monitor, mass_updater). Wiring (port names):
+  `ControllerHost.command` -> `Engine.command`; `plant.state` -> `Engine.plant_state`, `ControllerHost.plant_state`,
+  `AeroLoads.plant_state`, `ContactObserver.plant_state`; `Engine.propellant` -> `AeroLoads.propellant`,
+  `ControllerHost.propellant`; `WindSource.wind` -> `AeroLoads.wind`; `Engine.spatial_forces` and
+  `AeroLoads.spatial_forces` -> `ForceCombiner` -> plant applied forces; plant contact results -> `ContactObserver`.
+  The wind seed is `int(rng.integers(2**32))`, the same first draw as the legacy `Simulation`.
+- `ControllerHost(cfg, controller, command_delay, perfect_state)` (inputs `plant_state`, `propellant`; output `command`, 4):
+  one periodic update at the physics step runs the controller every `controller_rate` ticks, pushes the command
+  into `delay.CommandQueue` (delay in physics steps, `round(delay / dt)`) and stores the one due as discrete state.
+  Delay 0 acts on the step the command was computed. It forwards the controller's `log_columns` / `log_values()`.
+- `DrakeSimulation(cfg, controller, env, x0, rng, perfect_state, command_delay, log_decimation, faults)` has the
+  legacy `Simulation` signature and `run(t_end) -> SimResult` (same log, `df.attrs`). `perfect_state=False` and
+  `faults` raise `NotImplementedError` until S19. Per step: event check on x_k (a terminal row gets no controller
+  call), `AdvanceTo(t_k)` runs the host update, log row k, midpoint mass write, `AdvanceTo(t_k + dt)`.
+  `run` makes a fresh simulator each call. `run_hop(..., backend="drake")` selects it.

@@ -25,7 +25,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S15 | Propulsion and actuators as Drake systems | done | S14 | 2026-10-20 | hopper/drake/propulsion.py: `Engine(cfg, plant)` LeafSystem (ports and state layout in Decisions). Throughput: plant + engine, 3 s burn, RK3 1 ms, about 13.8k steps/s (no mass writes, no contact). Review FAILED 3 rounds (test gaps only, see Backlog); merged on the user's decision, no PASS. |
 | S16 | Environment, wind and aerodynamics on Drake | done | S14 | 2026-10-20 | hopper/drake/{wind,aero,combiner}.py: `WindSource` (gust equals legacy `Wind` bit for bit), `AeroLoads` (force at CP, matches legacy `aero_loads`), `ForceCombiner(n)`, `build_vehicle_plant(gravity_enabled=)`. S18 wires them (aero needs the Engine `propellant` output). Reviewed: PASS (round 2) |
 | S17 | Legs, ground contact and outcome events on Drake | done | S14 | 2026-10-20 | hopper/drake/{legs,events}.py: `add_legs(plant, scene_graph, cfg) -> LegGeometry`, `ContactObserver` (foot_forces, contact_count, total_force, base_strike), `DrakeEventMonitor` (reuses `check_events`; `as_simulator_monitor`). S18 wires the observer to `plant.get_contact_results_output_port()`. Reviewed: PASS (round 2) |
-| S18 | Closed-loop diagram, controller host, delay, logging | todo | S15, S16, S17 | - | |
+| S18 | Closed-loop diagram, controller host, delay, logging | in_progress | S15, S16, S17 | 2026-10-20 | |
 | S19 | Sensors and fault injection on Drake | todo | S18 | - | |
 | S20 | Scenarios and Monte Carlo on Drake | todo | S19 | - | |
 | S21 | Visualisation: Meshcat replay and log plots | todo | S18 | - | |
