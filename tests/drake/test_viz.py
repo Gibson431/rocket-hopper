@@ -88,9 +88,16 @@ def test_live_mode_publishes_geometry_to_meshcat_while_running(cfg, meshcat):
 
 def test_replayed_poses_equal_the_logged_poses_to_1e9(cfg, meshcat):
     log = synthetic_log(cfg)
-    seen = []
     rp = Replay(cfg, meshcat)
-    rp.play(log, speed=math.inf, fps=None, on_frame=lambda k, pose: seen.append((k, pose)))
+    frame_id = rp.plant.GetBodyFrameIdOrThrow(rp.plant.GetBodyByName("hopper").index())
+    sg_ctx = rp.scene_graph.GetMyContextFromRoot(rp.context)
+    seen = []
+
+    def read_back(k, _pose):  # the pose the scene graph holds after the frame was drawn
+        query = rp.scene_graph.get_query_output_port().Eval(sg_ctx)
+        seen.append((k, RigidTransform(query.GetPoseInWorld(frame_id))))  # copy: a reference
+
+    rp.play(log, speed=math.inf, fps=None, on_frame=read_back)
     assert [k for k, _ in seen] == list(range(len(log)))
     for k, pose in seen:
         row = log.iloc[k]
@@ -99,11 +106,53 @@ def test_replayed_poses_equal_the_logged_poses_to_1e9(cfg, meshcat):
         com = np.array([0.0, 0.0, mass_properties(row["prop"], cfg).com_z])
         np.testing.assert_allclose(pose.rotation().matrix(), rot, atol=1e-9)
         # the logged position is the CoM; the body frame sits at the gimbal pivot
-        np.testing.assert_allclose(
-            pose.translation() + rot @ com,
-            row[["pos_x", "pos_y", "pos_z"]].to_numpy(float),
-            atol=1e-9,
-        )
+        expected = row[["pos_x", "pos_y", "pos_z"]].to_numpy(float)
+        np.testing.assert_allclose(pose.translation() + rot @ com, expected, atol=1e-9)
+
+
+class _Spy:
+    """Delegates to a real Meshcat and records the transform and property calls."""
+
+    def __init__(self, inner):
+        self._inner, self.calls = inner, []
+
+    def __getattr__(self, name):
+        attr = getattr(self._inner, name)
+        if name in ("SetTransform", "SetProperty"):
+
+            def wrapped(*args):
+                self.calls.append((name, args))
+                return attr(*args)
+
+            return wrapped
+        return attr
+
+
+def test_live_replay_sends_the_plume_matrix_for_every_frame(cfg, meshcat):
+    log = synthetic_log(cfg, n=11)
+    rp = Replay(cfg, meshcat)
+    rp.meshcat = spy = _Spy(meshcat)
+    rp.play(log, speed=math.inf, fps=None)
+    sent = [a[1] for n, a in spy.calls if n == "SetTransform" and a[0] == rp.plume_path]
+    assert len(sent) == len(log)
+    for k, m in enumerate(sent):
+        row = log.iloc[k]
+        expected = rp.plume_matrix(rp.body_pose(row), (row["gim_x"], row["gim_y"]), row["thrust"])
+        np.testing.assert_allclose(m, expected, atol=1e-12)
+
+
+def test_recorded_replay_sends_plume_pose_and_scale_tracks_with_times(cfg, meshcat):
+    log = synthetic_log(cfg, n=11)
+    rp = Replay(cfg, meshcat)
+    rp.meshcat = spy = _Spy(meshcat)
+    rp.recording = True
+    rp.play(log, speed=math.inf, fps=None)
+    poses = [a for n, a in spy.calls if n == "SetTransform" and a[0] == rp.plume_path]
+    scales = [a for n, a in spy.calls if n == "SetProperty" and a[:2] == (rp.plume_path, "scale")]
+    assert [a[2] for a in poses] == list(log["t"])  # recorded at the log times
+    assert [a[3] for a in scales] == list(log["t"])
+    for a in scales:
+        assert a[2][2] == pytest.approx(rp.plume_length(1500.0))  # scale along the plume axis
 
 
 def test_replay_frame_rate_limits_the_rows_shown(cfg, meshcat):

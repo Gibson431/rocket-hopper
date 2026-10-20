@@ -87,7 +87,10 @@ def test_plot_estimation_shows_error_with_three_sigma_bounds(real_log):
     assert len(fig.axes) == 6
     ax = fig.axes[0]
     ys = [np.asarray(ln.get_ydata()) for ln in ax.lines]
-    assert any(np.allclose(np.abs(y), 0.03) for y in ys)  # +/-3 sigma, sigma = 0.01
+    assert any(np.allclose(y, 0.03) for y in ys)  # +3 sigma, sigma = 0.01
+    assert any(np.allclose(y, -0.03) for y in ys)  # -3 sigma
+    err = log["est_pos_x"].to_numpy() - log["pos_x"].to_numpy()  # estimate minus truth
+    assert any(np.allclose(y, err) for y in ys)
     assert any("est_pos_x" in c for c in real_log.columns)
     assert isinstance(plots.plot_estimation(real_log), Figure)
 
@@ -147,3 +150,9 @@ def test_cli_writes_figures_and_html(tmp_path):
     mod.main([str(src), "--out", str(out), "--html", str(html)])
     assert (out / "overview.png").exists()
     assert html.stat().st_size > 1000
+
+
+def test_plot_overview_gimbal_panel_is_in_degrees():
+    log = synthetic_log()
+    ys = [np.asarray(ln.get_ydata()) for ln in plots.plot_overview(log).axes[5].lines]
+    assert any(np.allclose(y, np.degrees(log["gim_x"])) for y in ys)

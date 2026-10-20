@@ -243,4 +243,4 @@ One row per physics step (or decimated): `t`, the 19 state entries, true total m
   writes a static HTML. The logged position is the CoM; the body frame is at the gimbal pivot.
 - `hopper.analysis.plots` functions take a log frame and return `Figure`s; `save_all(log, out_dir)` writes PNGs.
   CLI: `scripts/plot_run.py LOG [--replay] [--html F] [--out DIR]`.
-
+- The replay's time/phase/outcome overlay is a Meshcat button label: visible in live replay, absent from the static HTML.
