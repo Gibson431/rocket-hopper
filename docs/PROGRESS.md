@@ -28,7 +28,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S18 | Closed-loop diagram, controller host, delay, logging | done | S15, S16, S17 | 2026-10-20 | hopper/drake/{diagram,controller_host,delay,logging,simulation}.py: `build_diagram`, `ControllerHost` (controller + delay queue in one update), `DrakeSimulation` (legacy signature; sensors/faults raise NotImplementedError until S19), `run_hop(backend="drake")`. Speed: perfect-state hop 18.8-23.6 s wall, 1070-1350 steps/s (legacy about 1300), within the 900 steps/s budget. Reviewed: PASS (round 4; rounds 1-3 failed on test gaps, all fixed) |
 | S19 | Sensors and fault injection on Drake | done | S18 | 2026-10-20 | hopper/drake/sensors.py `SensorsSystem`; faults in `ControllerHost` (command), `Engine` numeric parameter (params), `SensorsSystem` (sensors); `DrakeSimulation` takes `perfect_state=False` and `faults`. No drake/faults.py (see Decisions). Reviewed: PASS (round 2; round 1 failed on a missing attitude bound) |
 | S20 | Scenarios and Monte Carlo on Drake | todo | S19 | - | |
-| S21 | Visualisation: Meshcat replay and log plots | in_progress | S18 | 2026-10-20 | hopper/drake/viz.py (`add_visual_geometry`, `Replay`, `replay`, `record_replay`), hopper/analysis/plots.py, scripts/plot_run.py; `build_vehicle_plant(visual=)`, `build_diagram(visual=, meshcat=)`, `DrakeSimulation(meshcat=)`. Example (seed 0 Drake EKF hop, LANDED): `uv run python scripts/plot_run.py runs/hop_drake_ekf.parquet --html runs/hop_drake_ekf.html --out runs/hop_drake_ekf_figs` writes overview/trajectory/control/estimation PNGs and a 2.5 MB HTML. |
+| S21 | Visualisation: Meshcat replay and log plots | done | S18 | 2026-10-20 | hopper/drake/viz.py (`add_visual_geometry`, `Replay`, `replay`, `record_replay`), hopper/analysis/plots.py, scripts/plot_run.py; `build_vehicle_plant(visual=)`, `build_diagram(visual=, meshcat=)`, `DrakeSimulation(meshcat=)`. Example (seed 0 Drake EKF hop, LANDED): `uv run python scripts/plot_run.py runs/hop_drake_ekf.parquet --html runs/hop_drake_ekf.html --out runs/hop_drake_ekf_figs` writes overview/trajectory/control/estimation PNGs and a 2.5 MB HTML. Reviewed: PASS (round 2; round 1 failed on unpinned pose/plume sends) |
 | S22 | Cutover to Drake and legacy removal | todo | S20, S21 | - | |
 
 ## Decisions
@@ -133,6 +133,7 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 
 ## Backlog
 
+- S21 review suggestions: pin visual geometry placement/size and `PLUME_PER_NEWTON` (absolute value); stronger `record_replay` HTML assertion (Meshcat marker); tests create `Meshcat()` which opens a local port (possible clash in parallel runs).
 - S21: log `mission_state` from `MissionController` (via `log_columns`) so the overview shades phases; record fault times in `df.attrs`; look at the static HTML (plume scale track) in a browser.
 - S19 review suggestions: sensor faults are silently ignored when `perfect_state=True`; test parameter/command faults in sensor mode; keep the step file's drake/faults.py note in sync.
 Out-of-scope ideas found while working. Do not do these inside another step.
@@ -191,4 +192,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-20, S17, todo -> in_progress -> done: Drake legs (point contact), `ContactObserver`, `DrakeEventMonitor`; 28 new tests (4 regression-marked). Reviewed: PASS (round 2; round 1 failed on unpinned friction/stiction and missing CONVENTIONS entry). Next: S18 (needs S15-S17), or S21.
 - 2026-10-20, S18, todo -> in_progress -> done: Drake `build_diagram`, `ControllerHost`, `CommandQueue`, `DrakeLogger`, `DrakeSimulation`, `run_hop(backend="drake")`; 27 tests in tests/drake/test_closed_loop.py. Reviewed: PASS (round 4; rounds 1-3 failed on test gaps only). Next: S19 (sensors and faults on Drake), or S21.
 - 2026-10-20, S19, todo -> in_progress -> done: `SensorsSystem`, faults at the host/engine/sensor seams, `DrakeSimulation(perfect_state=False, faults=...)`; 8 sensor tests, 14 fault tests. Reviewed: PASS (round 2; round 1 failed on a missing attitude RMS bound). Next: S20 (scenarios and Monte Carlo on Drake), or S21.
-- 2026-10-20, S21, todo -> in_progress -> done pending review: Meshcat replay, visual geometry, log plots, `plot_run.py`; 20 new tests.
+- 2026-10-20, S21, todo -> in_progress -> done: Meshcat replay, visual geometry, log plots, `plot_run.py`; 23 new tests. Reviewed: PASS (round 2; round 1 failed on unpinned pose/plume sends). Next: S20, then S22.
