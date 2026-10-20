@@ -17,7 +17,7 @@ randomness decisions).
   samples; the controller host keeps the newest sample per field between calls, as the engine does.
   Spawn order of sensor RNGs (`rng.spawn(4)`: imu, baro, gps, lidar) is unchanged so a seed produces the
   the same noise stream for a given seed.
-- `hopper/drake/faults.py`: the six faults plus `GyroBias` as diagram elements or wrappers around the
+- (No `faults.py` was written; the seams are in `ControllerHost`, `Engine`/`DrakeSimulation` and `SensorsSystem`, see PROGRESS Decisions.) The six faults plus `GyroBias` as diagram elements or wrappers around the
   command, parameter and sensor seams, with the same semantics as `hopper.sim.faults`:
   `apply_command` on the last commanded value every step (stuck gimbal ignores later commands and the
   delay), `modify_params` for thrust scale and gimbal rate (parameters written to the plant/engine at

@@ -26,7 +26,7 @@ Dependencies are in the "Depends" column (comma-separated step IDs, or `-`).
 | S16 | Environment, wind and aerodynamics on Drake | done | S14 | 2026-10-20 | hopper/drake/{wind,aero,combiner}.py: `WindSource` (gust equals legacy `Wind` bit for bit), `AeroLoads` (force at CP, matches legacy `aero_loads`), `ForceCombiner(n)`, `build_vehicle_plant(gravity_enabled=)`. S18 wires them (aero needs the Engine `propellant` output). Reviewed: PASS (round 2) |
 | S17 | Legs, ground contact and outcome events on Drake | done | S14 | 2026-10-20 | hopper/drake/{legs,events}.py: `add_legs(plant, scene_graph, cfg) -> LegGeometry`, `ContactObserver` (foot_forces, contact_count, total_force, base_strike), `DrakeEventMonitor` (reuses `check_events`; `as_simulator_monitor`). S18 wires the observer to `plant.get_contact_results_output_port()`. Reviewed: PASS (round 2) |
 | S18 | Closed-loop diagram, controller host, delay, logging | done | S15, S16, S17 | 2026-10-20 | hopper/drake/{diagram,controller_host,delay,logging,simulation}.py: `build_diagram`, `ControllerHost` (controller + delay queue in one update), `DrakeSimulation` (legacy signature; sensors/faults raise NotImplementedError until S19), `run_hop(backend="drake")`. Speed: perfect-state hop 18.8-23.6 s wall, 1070-1350 steps/s (legacy about 1300), within the 900 steps/s budget. Reviewed: PASS (round 4; rounds 1-3 failed on test gaps, all fixed) |
-| S19 | Sensors and fault injection on Drake | in_progress | S18 | 2026-10-20 | hopper/drake/sensors.py `SensorsSystem`; faults in `ControllerHost` (command), `Engine` numeric parameter (params), `SensorsSystem` (sensors); `DrakeSimulation` takes `perfect_state=False` and `faults`. Awaiting review |
+| S19 | Sensors and fault injection on Drake | done | S18 | 2026-10-20 | hopper/drake/sensors.py `SensorsSystem`; faults in `ControllerHost` (command), `Engine` numeric parameter (params), `SensorsSystem` (sensors); `DrakeSimulation` takes `perfect_state=False` and `faults`. No drake/faults.py (see Decisions). Reviewed: PASS (round 2; round 1 failed on a missing attitude bound) |
 | S20 | Scenarios and Monte Carlo on Drake | todo | S19 | - | |
 | S21 | Visualisation: Meshcat replay and log plots | todo | S18 | - | |
 | S22 | Cutover to Drake and legacy removal | todo | S20, S21 | - | |
@@ -131,6 +131,7 @@ Format: `YYYY-MM-DD, step: decision. Reason.`
 
 ## Backlog
 
+- S19 review suggestions: sensor faults are silently ignored when `perfect_state=True`; test parameter/command faults in sensor mode; keep the step file's drake/faults.py note in sync.
 Out-of-scope ideas found while working. Do not do these inside another step.
 
 - S01 review suggestions (also: remove duplicate assertion in geometry test): test `quat_error` small-angle branch (n < 1e-12) and `dcm_to_quat` on non-unit input; add vehicle-length to config and check tank fits inside it.
@@ -186,3 +187,4 @@ Format: `YYYY-MM-DD, step, status change, what was done, what the next agent sho
 - 2026-10-20, S16, todo -> in_progress -> done: Drake `WindSource`, `AeroLoads`, `ForceCombiner`, gravity switch; 18 smoke tests (regression-marked). Reviewed: PASS (round 2; round 1 failed on unpinned gust discretisation, weak integrator-independence test, rng replay and unlogged decisions). Next: S17 (then S18 needs S15-S17).
 - 2026-10-20, S17, todo -> in_progress -> done: Drake legs (point contact), `ContactObserver`, `DrakeEventMonitor`; 28 new tests (4 regression-marked). Reviewed: PASS (round 2; round 1 failed on unpinned friction/stiction and missing CONVENTIONS entry). Next: S18 (needs S15-S17), or S21.
 - 2026-10-20, S18, todo -> in_progress -> done: Drake `build_diagram`, `ControllerHost`, `CommandQueue`, `DrakeLogger`, `DrakeSimulation`, `run_hop(backend="drake")`; 27 tests in tests/drake/test_closed_loop.py. Reviewed: PASS (round 4; rounds 1-3 failed on test gaps only). Next: S19 (sensors and faults on Drake), or S21.
+- 2026-10-20, S19, todo -> in_progress -> done: `SensorsSystem`, faults at the host/engine/sensor seams, `DrakeSimulation(perfect_state=False, faults=...)`; 8 sensor tests, 14 fault tests. Reviewed: PASS (round 2; round 1 failed on a missing attitude RMS bound). Next: S20 (scenarios and Monte Carlo on Drake), or S21.
