@@ -38,15 +38,16 @@ class DrakeSimulation:
     ) -> None:
         if command_delay < 0:
             raise ValueError(f"command_delay must be >= 0, got {command_delay}")
-        if not perfect_state or faults:
-            raise NotImplementedError("sensors and faults on Drake arrive in S19")
         self.cfg = cfg
         self.controller = controller
         self.x0 = np.array(x0, dtype=np.float64)
         self.log_decimation = log_decimation
+        self.faults = tuple(faults)
         self.seed = seed_of(rng)
         self.context = None
-        self.rig = build_diagram(cfg, controller, env, rng, command_delay, perfect_state)
+        self.rig = build_diagram(
+            cfg, controller, env, rng, command_delay, perfect_state, self.faults
+        )
 
     def run(self, t_end: float | None = None) -> SimResult:
         cfg, dt, rig = self.cfg, self.cfg.sim.dt, self.rig
@@ -59,6 +60,8 @@ class DrakeSimulation:
             rig.engine.GetMyMutableContextFromRoot(ctx), x0[PROP], x0[THR], x0[GIM], x0[GIMR]
         )
         rig.host.reset()
+        if rig.sensors is not None:
+            rig.sensors.reset()
         rig.monitor.reset()
         sim.Initialize()
         self.context = ctx  # final state of the last run, for inspection
@@ -67,9 +70,18 @@ class DrakeSimulation:
         plant_ctx = rig.plant.GetMyMutableContextFromRoot(ctx)
 
         outcome = Outcome.RUNNING
+        faults, epochs = self.faults, None
+        engine_mutable = rig.engine.GetMyMutableContextFromRoot(ctx)
         k = 0
         while True:
             t = k * dt
+            if faults:  # rebuild the effective config only when a parameter fault changes it
+                key = tuple(f.param_epoch(t) for f in faults)
+                if key != epochs:
+                    epochs, phys = key, cfg
+                    for f in faults:
+                        phys = f.modify_params(t, phys)
+                    rig.engine.set_config(engine_mutable, phys)
             event = rig.monitor.evaluate(ctx)
             done = event is not None or (n_max is not None and k >= n_max)
             if done:

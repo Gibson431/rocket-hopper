@@ -8,6 +8,7 @@ Engine propellant -> AeroLoads, ControllerHost
 plant contact results -> ContactObserver
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -24,8 +25,10 @@ from hopper.drake.legs import ContactObserver, add_legs
 from hopper.drake.mass import MassUpdater
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.propulsion import Engine
+from hopper.drake.sensors import SensorsSystem
 from hopper.drake.wind import WindSource
 from hopper.dynamics.environment import Environment
+from hopper.sim.faults import Fault
 
 
 @dataclass
@@ -39,6 +42,7 @@ class DrakeRig:
     observer: ContactObserver
     monitor: DrakeEventMonitor
     mass_updater: MassUpdater
+    sensors: SensorsSystem | None = None
 
 
 def build_diagram(
@@ -48,8 +52,11 @@ def build_diagram(
     rng: np.random.Generator,
     command_delay: float = 0.0,
     perfect_state: bool = True,
+    faults: Sequence[Fault] = (),
 ) -> DrakeRig:
-    """The wind stream is seeded from `rng` exactly like the legacy `Simulation` does."""
+    """The wind stream is seeded from `rng` exactly like the legacy `Simulation` does, then the
+    sensors spawn their generators from it (the legacy order). With no faults and perfect state the
+    diagram has neither fault nor sensor systems."""
     wind_seed = int(rng.integers(2**32))
     builder = DiagramBuilder()
     plant, scene_graph = build_vehicle_plant(
@@ -58,7 +65,9 @@ def build_diagram(
     legs = add_legs(plant, scene_graph, cfg)
     plant.Finalize()
 
-    host = builder.AddSystem(ControllerHost(cfg, controller, command_delay, perfect_state))
+    host = builder.AddSystem(
+        ControllerHost(cfg, controller, command_delay, perfect_state, faults=faults)
+    )
     engine = builder.AddSystem(Engine(cfg, plant))
     wind = builder.AddSystem(
         WindSource(env.wind.mean_i, env.wind.gust_sigma, env.wind.gust_tau, wind_seed, cfg.sim.dt)
@@ -78,6 +87,15 @@ def build_diagram(
     builder.Connect(engine.get_force_output_port(), combiner.get_input_port(0))
     builder.Connect(aero.get_force_output_port(), combiner.get_input_port(1))
     builder.Connect(combiner.get_output_port(), plant.get_applied_spatial_force_input_port())
+    sensors = None
+    if not perfect_state:
+        sensors = builder.AddSystem(SensorsSystem(cfg, plant, rng, faults))
+        builder.Connect(state, sensors.get_plant_state_input_port())
+        builder.Connect(engine.get_propellant_output_port(), sensors.get_propellant_input_port())
+        builder.Connect(
+            plant.get_body_spatial_accelerations_output_port(), sensors.get_accel_input_port()
+        )
+        builder.Connect(sensors.get_sensors_output_port(), host.get_sensors_input_port())
     builder.Connect(state, observer.get_plant_state_input_port())
     builder.Connect(
         plant.get_contact_results_output_port(), observer.get_contact_results_input_port()
@@ -92,4 +110,5 @@ def build_diagram(
         observer=observer,
         monitor=DrakeEventMonitor(plant, observer, cfg),
         mass_updater=MassUpdater(plant, cfg),
+        sensors=sensors,
     )

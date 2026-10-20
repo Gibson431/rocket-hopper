@@ -220,3 +220,16 @@ One row per physics step (or decimated): `t`, the 19 state entries, true total m
   `faults` raise `NotImplementedError` until S19. Per step: event check on x_k (a terminal row gets no controller
   call), `AdvanceTo(t_k)` runs the host update, log row k, midpoint mass write, `AdvanceTo(t_k + dt)`.
   `run` makes a fresh simulator each call. `run_hop(..., backend="drake")` selects it.
+
+## Drake sensors and faults (S19)
+
+- `hopper.drake.sensors.SensorsSystem(cfg, plant, rng, faults)`: inputs `plant_state`, `propellant`, `accel` (plant
+  body spatial accelerations); output `sensors` (a `SensorData`). One periodic *unrestricted* update per physics step
+  runs the legacy `SensorSuite` (generators spawned from `rng` in the legacy order, after the wind seed draw) and the
+  faults' `modify_sensors`. Drake runs unrestricted updates before discrete ones, so the host sees the samples of the
+  same step, as the legacy engine does. `specific_force(context)` is the IMU input (`R^T (a_com - g)`).
+- `ControllerHost(..., faults=())` has a `sensors` input unless `perfect_state`; it keeps the newest sample per field
+  between controller calls and applies the faults' `apply_command` to the held raw command on every step.
+- Parameter faults: the engine and RCS parameters are a numeric parameter of `Engine` (`set_config(context, cfg)`);
+  `DrakeSimulation.run` writes the effective config when a fault's `param_epoch` changes. With no faults and
+  `perfect_state=True` the diagram has no sensor or fault systems. `build_diagram(..., faults=())`, `DrakeRig.sensors`.
