@@ -10,7 +10,10 @@ GRAVITY = 9.80665  # Drake's default is 9.81
 
 
 def build_vehicle_plant(
-    cfg: VehicleConfig, builder: DiagramBuilder | None = None, finalize: bool = True
+    cfg: VehicleConfig,
+    builder: DiagramBuilder | None = None,
+    finalize: bool = True,
+    gravity_enabled: bool = True,
 ):
     """Return (plant, scene_graph). The plant is continuous (`time_step=0`) with the full-propellant
     mass properties; `MassUpdater` changes them during a run. With no `builder` the plant stands
@@ -20,7 +23,8 @@ def build_vehicle_plant(
     else:
         plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     plant.AddRigidBody("hopper", spatial_inertia(cfg.tank.prop_mass_initial, cfg))
-    plant.mutable_gravity_field().set_gravity_vector([0.0, 0.0, -GRAVITY])
+    g = GRAVITY if gravity_enabled else 0.0  # matches Environment(gravity_enabled=False)
+    plant.mutable_gravity_field().set_gravity_vector([0.0, 0.0, -g])
     if finalize:
         plant.Finalize()
     return plant, scene_graph

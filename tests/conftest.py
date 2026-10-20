@@ -56,7 +56,11 @@ REGRESSION_TESTS = {
     "test_gps_dropout_probability",
 }
 # same basename as a fast legacy unit test, so matched by directory too
-REGRESSION_PATHS = {("drake", "test_propulsion.py")}
+REGRESSION_PATHS = {
+    ("drake", "test_propulsion.py"),
+    ("drake", "test_wind.py"),
+    ("drake", "test_aero.py"),
+}
 REGRESSION_PREFIXES = ("test_closed_loop_",)
 
 
