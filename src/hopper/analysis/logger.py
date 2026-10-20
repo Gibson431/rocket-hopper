@@ -71,6 +71,10 @@ class Logger:
         """Whether the next `log` call will be stored (unless it carries an event)."""
         return self._calls % self.decimation == 0
 
+    def skip(self) -> None:
+        """Count a step that is not stored (same effect as a `log` call that is dropped)."""
+        self._calls += 1
+
     def log(
         self,
         t: float,

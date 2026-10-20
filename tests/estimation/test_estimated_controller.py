@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
-from estimation_harness import Feeder
 
 from hopper.estimated_controller import EstimatedController
 from hopper.scenario_glue import ekf_params_from_config
 from hopper.types import Command, SensorData, StateEstimate
+
+from .estimation_harness import Feeder
 
 
 class StubMission:
