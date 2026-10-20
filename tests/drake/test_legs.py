@@ -147,3 +147,17 @@ def test_hard_five_metre_per_second_landing_stays_finite_without_rebound(cfg):
     assert 0.0 < -zs[lowest] < 0.2  # bounded penetration
     assert zs[lowest + 20 :].max() < 0.0
     assert zs[-1] == pytest.approx(zs[-500:].mean(), abs=1e-4)
+
+
+def test_sliding_friction_is_mu_times_the_normal_force(cfg):
+    _, _, total, _ = outputs(cfg, state_with_lowest_foot(cfg, 0.005, vel=(1.0, 0, 0)))
+    assert total[0] == pytest.approx(-cfg.legs.friction * total[2], rel=0.02)
+    assert abs(total[1]) < 1e-6 * total[2]
+
+
+def test_friction_ramps_up_over_the_stiction_tolerance(cfg):
+    # Slip at a fifth of the tolerance gives a small fraction of full friction (a frictionless or
+    # tolerance-free model gives 0 or the full mu N).
+    _, _, total, _ = outputs(cfg, state_with_lowest_foot(cfg, 0.005, vel=(0.01, 0, 0)))
+    ratio = -total[0] / total[2]
+    assert 0.02 * cfg.legs.friction < ratio < 0.3 * cfg.legs.friction

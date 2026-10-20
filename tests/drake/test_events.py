@@ -9,7 +9,7 @@ from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
 from hopper.drake.state import set_legacy_state
 from hopper.sim.events import Outcome
-from hopper.types import make_state
+from hopper.types import OMEGA, make_state
 
 DT = 0.01
 
@@ -52,8 +52,10 @@ def fly(cfg, **kw):
     return state_with_lowest_foot(cfg, -1.0, **kw)
 
 
-def rest(cfg, **kw):
-    return state_with_lowest_foot(cfg, 0.008, **kw)
+def rest(cfg, omega=(0, 0, 0), **kw):
+    x = state_with_lowest_foot(cfg, 0.008, **kw)
+    x[OMEGA] = omega
+    return x
 
 
 def test_nothing_happens_in_flight(cfg):
@@ -82,6 +84,7 @@ def test_landed_hold_timer_resets_when_a_condition_is_violated(cfg):
         dict(vel=(0.3, 0, 0)),
         dict(vel=(0, 0, -0.3)),
         dict(tilt=np.deg2rad(12)),
+        dict(omega=(0, 0.3, 0)),
     ],
 )
 def test_landed_needs_slow_and_level(cfg, bad):

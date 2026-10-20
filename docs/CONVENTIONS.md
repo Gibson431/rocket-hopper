@@ -191,3 +191,13 @@ One row per physics step (or decimated): `t`, the 19 state entries, true total m
 - `tests/` mirrors `src/hopper/`. Test names describe the physical behaviour.
 - Analytic tests use tight tolerances (state them). Stochastic tests use fixed seeds and statistical bounds.
 - A step's tests must pass without any other step's optional features.
+
+## Drake legs and events (S17)
+
+- `hopper.drake.legs.add_legs(plant, scene_graph, cfg) -> LegGeometry` adds ground and foot spheres
+  before `Finalize` (parameter mapping in the module docstring). `ContactObserver(plant, legs)` has
+  inputs `plant_state`, `contact_results` and outputs `foot_forces` (n), `contact_count`,
+  `total_force` (3, world), `base_strike`.
+- `hopper.drake.events.DrakeEventMonitor(plant, observer, cfg)`: `evaluate(root_context)` runs the
+  legacy `check_events`; `as_simulator_monitor(diagram)` is for `Simulator.set_monitor`; the outcome
+  is in `.outcome`.
