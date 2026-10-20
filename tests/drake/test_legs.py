@@ -5,7 +5,7 @@ from pydrake.all import DiagramBuilder
 from hopper.drake.legs import ContactObserver, add_legs
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
-from hopper.drake.state import set_legacy_state
+from hopper.drake.state import set_state_vector
 from hopper.dynamics.mass_model import mass_properties
 from hopper.math3d import quat_from_axis_angle, quat_to_dcm
 from hopper.types import make_state
@@ -38,7 +38,7 @@ def foot_offsets(cfg):
 
 
 def state_with_lowest_foot(cfg, depth, tilt=0.0, vel=(0, 0, 0), prop=20.0):
-    """Legacy state whose lowest foot point is `depth` below the ground (negative: above)."""
+    """State vector whose lowest foot point is `depth` below the ground (negative: above)."""
     q = quat_from_axis_angle([0, 1, 0], tilt)
     mp = mass_properties(prop, cfg)
     low = (foot_offsets(cfg) @ quat_to_dcm(q).T)[:, 2].min()
@@ -49,7 +49,7 @@ def state_with_lowest_foot(cfg, depth, tilt=0.0, vel=(0, 0, 0), prop=20.0):
 def outputs(cfg, x):
     diagram, plant, obs = build(cfg)
     ctx = diagram.CreateDefaultContext()
-    set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), x, cfg)
+    set_state_vector(plant, plant.GetMyMutableContextFromRoot(ctx), x, cfg)
     oc = obs.GetMyContextFromRoot(ctx)
     return (
         obs.get_foot_forces_output_port().Eval(oc),
@@ -115,7 +115,7 @@ def _drop(cfg, height, vz=0.0, t_end=3.0):
     sim = make_simulator(diagram)
     ctx = sim.get_mutable_context()
     pctx = plant.GetMyMutableContextFromRoot(ctx)
-    set_legacy_state(plant, pctx, state_with_lowest_foot(cfg, -height, vel=(0, 0, vz)), cfg)
+    set_state_vector(plant, pctx, state_with_lowest_foot(cfg, -height, vel=(0, 0, vz)), cfg)
     sim.Initialize()
     mp = mass_properties(20.0, cfg)
     zs, fs = [], []
@@ -133,7 +133,7 @@ def test_drop_from_half_a_metre_settles_upright_without_bouncing(cfg):
     lowest = int(np.argmin(zs))
     assert zs.max() <= 0.5 + 1e-6  # never above the drop height
     assert zs[lowest:].max() < 0.01 and zs[lowest + 20 :].max() < 0.0  # no rebound off the ground
-    # Rest: weight carried by the feet at the series-spring depth m g / (n k) (legacy: 8.17 mm).
+    # Rest: weight carried by the feet at the series-spring depth m g / (n k).
     assert zs[-1] == pytest.approx(-mp.mass * G / (cfg.legs.count * cfg.legs.stiffness), abs=2e-4)
     assert fs[-1] == pytest.approx(mp.mass * G, rel=0.01)
     assert np.ptp(zs[-500:]) < 1e-5 and np.ptp(fs[-500:]) < 1.0  # no jitter

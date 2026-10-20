@@ -1,4 +1,4 @@
-"""Adapters between the legacy 19-state (CoM, body-frame rate) and the Drake floating body.
+"""Adapters between the state vector of `hopper.types` (CoM, body-frame rate) and the Drake body.
 
 Drake's body frame has its origin at the gimbal pivot; its state holds the origin position, the
 origin velocity and the angular velocity in the world frame (docs/DRAKE_DESIGN.md Q2). The CoM
@@ -34,8 +34,8 @@ def write_com_state(plant: MultibodyPlant, context, body, p_com, v_com) -> None:
     plant.SetFreeBodySpatialVelocity(context, body, SpatialVelocity(w_i, v_com - cross(w_i, r)))
 
 
-def to_legacy_state(plant: MultibodyPlant, context) -> np.ndarray:
-    """Legacy state with pos, vel, quat, omega filled; PROP, THR, GIM, GIMR (other systems): 0."""
+def to_state_vector(plant: MultibodyPlant, context) -> np.ndarray:
+    """State vector with pos, vel, quat, omega filled; PROP, THR, GIM, GIMR (other systems): 0."""
     body = plant.GetBodyByName(BODY_NAME)
     s = plant.GetPositionsAndVelocities(context)
     p_com, v_com = read_com_state(plant, context, body)
@@ -46,8 +46,8 @@ def to_legacy_state(plant: MultibodyPlant, context) -> np.ndarray:
     return x
 
 
-def set_legacy_state(plant: MultibodyPlant, context, x: np.ndarray, cfg: VehicleConfig) -> None:
-    """Set the body from a legacy state; the inertia is set from x[PROP] (mass model of `cfg`)."""
+def set_state_vector(plant: MultibodyPlant, context, x: np.ndarray, cfg: VehicleConfig) -> None:
+    """Set the body from a state vector; the inertia is set from x[PROP] (mass model of `cfg`)."""
     from hopper.drake.mass import spatial_inertia
 
     body = plant.GetBodyByName(BODY_NAME)

@@ -7,7 +7,7 @@ from hopper.drake.events import DrakeEventMonitor
 from hopper.drake.legs import ContactObserver, add_legs
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
-from hopper.drake.state import set_legacy_state
+from hopper.drake.state import set_state_vector
 from hopper.sim.events import Outcome
 from hopper.types import OMEGA, make_state
 
@@ -36,7 +36,7 @@ class Rig:
     def run(self, steps, t0=0.0):
         out = []
         for i, x in enumerate(steps):
-            set_legacy_state(
+            set_state_vector(
                 self.plant, self.plant.GetMyMutableContextFromRoot(self.ctx), x, self.cfg
             )
             self.ctx.SetTime(t0 + i * DT)
@@ -154,7 +154,7 @@ def test_crash_outranks_out_of_bounds(cfg):
 def test_repeated_evaluation_at_the_same_time_does_not_change_the_touchdown_history(cfg):
     rig = Rig(cfg)
     rig.run([fly(cfg, vel=(0, 0, -5.0))])
-    set_legacy_state(
+    set_state_vector(
         rig.plant,
         rig.plant.GetMyMutableContextFromRoot(rig.ctx),
         rest(cfg, vel=(0, 0, -4.0)),
@@ -170,7 +170,7 @@ def _drop_with_monitor(cfg, height, vz=0.0, t_end=6.0):
     sim = make_simulator(rig.diagram)
     ctx = sim.get_mutable_context()
     x = state_with_lowest_foot(cfg, -height, vel=(0, 0, vz))
-    set_legacy_state(rig.plant, rig.plant.GetMyMutableContextFromRoot(ctx), x, cfg)
+    set_state_vector(rig.plant, rig.plant.GetMyMutableContextFromRoot(ctx), x, cfg)
     sim.set_monitor(rig.monitor.as_simulator_monitor(rig.diagram))
     sim.Initialize()
     sim.AdvanceTo(t_end)

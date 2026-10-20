@@ -1,8 +1,8 @@
-"""Quasi-steady drag as a Drake LeafSystem (same law as `hopper.dynamics.aero.aero_loads`).
+"""Quasi-steady drag as a Drake LeafSystem .
 
 The force acts at the centre of pressure on the body z axis, measured from the pivot (the body
 origin), so Drake produces the weathercock torque about the CoM itself. Air-relative velocity and
-ISA density use the CoM as in the legacy model; its offset comes from the propellant mass.
+ISA density use the CoM; its offset comes from the propellant mass.
 """
 
 import math

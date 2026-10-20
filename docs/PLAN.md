@@ -23,7 +23,7 @@ tool, so it fits: the rocket-specific parts (variable mass, gimbal, actuator lag
 around a maintained rigid-body and contact engine, and we get composable diagrams and Meshcat
 visualisation. Expect parity with the hand-rolled code on speed, not a speedup (Python systems stay on
 the hot path), and note that linearisation/autodiff will not see through Python systems. Drake is the
-source of truth for the physics; the hand-rolled code is deleted in S22 and not compared against.
+source of truth for the physics; the hand-rolled simulator was deleted in S22 and never compared against.
 
 ## Architecture
 
@@ -32,37 +32,35 @@ actuator commands. See `docs/CONVENTIONS.md` for exact types.
 
 ```
 rocket-hopper/
-  CLAUDE.md, pyproject.toml
+  CLAUDE.md, pyproject.toml, README.md
   configs/
     vehicle_default.yaml
     scenarios/*.yaml
   docs/                     # this plan, conventions, progress, steps/
   scripts/
     next_step.py            # prints the next step to work on
-    run_scenario.py
+    run_scenario.py, run_monte_carlo.py, plot_run.py, tune_attitude.py
   src/hopper/
     types.py                # state layout, SensorData, Command
     config.py               # pydantic models + YAML loading
     math3d.py               # quaternion ops, frames
+    scenario.py, scenario_glue.py, estimated_controller.py
+    drake/                  # the simulation: plant, engine, wind, aero, legs, events, sensors,
+                            # controller host, delay, logging, DrakeSimulation, viz
     dynamics/
-      rigid_body.py
-      mass_model.py
-      propulsion.py
-      aero.py
-      environment.py
-      contact.py
-      vehicle.py            # combines the above into f(t, x, cmd) -> xdot
+      mass_model.py         # CoM and inertia vs propellant
+      environment.py        # ISA atmosphere, Wind and Environment descriptions
     sim/
-      integrator.py         # fixed-step RK4
-      events.py
-      engine.py             # multi-rate loop, delay buffers
+      events.py             # outcomes and their detection
+      faults.py
+      result.py             # SimResult
     sensors/
       imu.py, baro.py, gps.py, lidar.py, suite.py
-    estimation/ekf.py
+    estimation/ekf.py, mass.py
     control/
-      interface.py, attitude.py, position.py, mission.py, mpc.py
+      interface.py, attitude.py, position.py, mission.py
     analysis/
-      logger.py, plots.py, monte_carlo.py, viz.py
+      logger.py, plots.py, monte_carlo.py
   tests/
 ```
 
@@ -115,20 +113,20 @@ real acceptance is that the S09-S11 controller scenarios fly on the Drake backen
 | S17 | Legs, ground contact and outcome events | S14 | 2-3 d |
 | S18 | Closed-loop diagram, controller host, delay, logging | S15, S16, S17 | 3 d |
 | S19 | Sensors and fault injection | S18 | 2 d |
-| S20 | Scenarios and Monte Carlo on Drake | S19 | 2 d |
+| S20 | Scenarios and Monte Carlo on Drake (dropped: legacy removed instead) | S19 | 2 d |
 | S21 | Visualisation: Meshcat replay and log plots | S18 | 2 d |
-| S22 | Cutover to Drake and legacy removal | S20, S21 | 1-2 d |
+| S22 | Cutover to Drake and legacy removal | S21 (S20 dropped) | 1-2 d |
 
 S15, S16 and S17 run in parallel after S14; S21 can run alongside S19-S20.
 
 **Known design problems** (S12 answers them): Drake has no fixed-step RK4 (the "fixed-step RK4" rule is
 amended in S12/S22); `MultibodyPlant` mass is a context parameter, not a state, so burning propellant
-needs an updater system; the legacy body frame is at the CoM, Drake's is fixed on the body; Python
+needs an updater system; the state vector's body frame is at the CoM, Drake's is fixed on the body; Python
 `LeafSystem` callbacks may be slower than the current 1300 steps/s; Drake objects are not picklable
 (build the diagram inside each Monte Carlo worker). Found while checking feasibility: a `LeafSystem`
 cannot write the plant's mass parameters (needs a sim-loop hook), a separate delay system adds a step
-of latency, and Drake's contact (series stiffness, depth-proportional damping) will not reproduce the
-legacy leg law exactly, so S17 has a fallback of keeping the legacy law as a force element.
+of latency, and Drake's contact (series stiffness, depth-proportional damping) does not reproduce the
+old hand-written leg law exactly; S17 tuned it instead (see `docs/DRAKE_DESIGN.md`).
 Effort for S12-S22 sums to about 17-21 days; S17 and S18 carry the schedule risk.
 
 **Removed from the plan.** The earlier S12 (matplotlib plots and 3D replay) and S13 (LQR/MPC/Gym) were

@@ -1,4 +1,4 @@
-"""`DrakeSimulation`: same constructor and `run` as the legacy `Simulation`, on the Drake diagram.
+"""`DrakeSimulation`: one closed-loop run on the Drake diagram.
 
 The loop steps the simulator one physics step at a time. At the top of step `k` the state is x_k
 and the host's periodic update for t_k has not run yet, so the event check (and a terminal row)
@@ -14,13 +14,12 @@ from hopper.config import VehicleConfig
 from hopper.control.interface import Controller, StateFeedbackController
 from hopper.drake.diagram import build_diagram
 from hopper.drake.logging import DrakeLogger
-from hopper.drake.propulsion import G0
 from hopper.drake.sim import make_simulator
-from hopper.drake.state import set_legacy_state
-from hopper.dynamics.environment import Environment
-from hopper.sim.engine import SimResult, seed_of
+from hopper.drake.state import set_state_vector
+from hopper.dynamics.environment import G0, Environment
 from hopper.sim.events import Outcome
 from hopper.sim.faults import Fault
+from hopper.sim.result import SimResult, seed_of
 from hopper.types import GIM, GIMR, PROP, THR
 
 
@@ -41,6 +40,7 @@ class DrakeSimulation:
         if command_delay < 0:
             raise ValueError(f"command_delay must be >= 0, got {command_delay}")
         self.cfg = cfg
+        self.env = env
         self.controller = controller
         self.x0 = np.array(x0, dtype=np.float64)
         self.log_decimation = log_decimation
@@ -57,7 +57,7 @@ class DrakeSimulation:
         sim = make_simulator(rig.diagram, dt)
         ctx = sim.get_mutable_context()
         x0 = self.x0
-        set_legacy_state(rig.plant, rig.plant.GetMyMutableContextFromRoot(ctx), x0, cfg)
+        set_state_vector(rig.plant, rig.plant.GetMyMutableContextFromRoot(ctx), x0, cfg)
         rig.engine.set_actuator_state(
             rig.engine.GetMyMutableContextFromRoot(ctx), x0[PROP], x0[THR], x0[GIM], x0[GIMR]
         )

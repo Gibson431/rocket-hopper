@@ -1,19 +1,18 @@
-"""Outcome events on the Drake diagram: the legacy classification fed from Drake outputs."""
+"""Outcome events on the Drake diagram: `check_events` fed from Drake outputs."""
 
 import numpy as np
 from pydrake.all import EventStatus
 
 from hopper.config import VehicleConfig
 from hopper.drake.legs import ContactObserver
-from hopper.drake.state import to_legacy_state
-from hopper.dynamics.contact import ContactOutput
-from hopper.sim.events import EventState, Outcome, check_events
+from hopper.drake.state import to_state_vector
+from hopper.sim.events import ContactOutput, EventState, Outcome, check_events
 
 
 class DrakeEventMonitor:
     """Runs `check_events` on the plant state and the `ContactObserver` outputs.
 
-    `evaluate(diagram_context)` is one call of the legacy monitor. `as_simulator_monitor` wraps it
+    `evaluate(diagram_context)` is one call of the event monitor. `as_simulator_monitor` wraps it
     for `Simulator.set_monitor`; the first outcome is kept in `outcome` and ends the run."""
 
     def __init__(self, plant, observer: ContactObserver, cfg: VehicleConfig):
@@ -42,7 +41,7 @@ class DrakeEventMonitor:
             any_contact=bool(np.any(forces > 0.0)),
             base_strike=bool(self._obs.get_base_strike_output_port().Eval(octx)[0] > 0.5),
         )
-        x = to_legacy_state(self._plant, pctx)
+        x = to_state_vector(self._plant, pctx)
         self._last_t, self._last = t, check_events(t, x, contact, self._cfg, self._state)
         if self.outcome is None:
             self.outcome = self._last

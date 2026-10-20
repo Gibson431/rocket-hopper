@@ -1,6 +1,8 @@
 # Drake port: design decisions (S12)
 
-Produced by the S12 spike. Speeds are approximate (run-to-run spread 10-15%). Spike code is in `scripts/spikes/` (`s12_*.py`, ruff-excluded, throwaway);
+Historical record: "legacy" below means the hand-rolled RK4 simulator, removed in S22.
+
+Produced by the S12 spike. Speeds are approximate (run-to-run spread 10-15%). Spike code was in `scripts/spikes/` and, with the hand-rolled simulator it compared against, was deleted in S22 (recover both from git history before the S22 commit);
 the numbers below come from running it on pydrake 1.58, Python 3.14.8, Linux x86_64. Open-loop test case
 for "burn" results: 12 s, throttle 0.4-1.0, gimbal pulses, roll torque, 100 kg -> 90 kg, initial spin;
 truth = legacy RK4 at dt = 0.25 ms (legacy 1 ms and 0.5 ms agree with it to 4e-10 m).

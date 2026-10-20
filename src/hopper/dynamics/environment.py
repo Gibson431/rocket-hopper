@@ -1,12 +1,11 @@
-"""Gravity, ISA troposphere, and wind with Gauss-Markov gusts."""
+"""Gravity, ISA troposphere, and the wind and switches that describe the environment."""
 
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
 import numpy as np
 
-from hopper.dynamics.propulsion import G0
-
+G0 = 9.80665  # m/s^2, standard gravity
 _T0 = 288.15
 _P0 = 101325.0
 _LAPSE = 0.0065  # K/m
@@ -40,37 +39,18 @@ def pressure_to_altitude(p: float) -> float:
     return _T0 / _LAPSE * (1.0 - (p / _P0) ** (1.0 / _EXP))
 
 
+@dataclass(frozen=True)
 class Wind:
-    """Mean wind plus a first-order Gauss-Markov gust per axis.
+    """Mean wind plus a first-order Gauss-Markov gust per axis. The gust is drawn by
+    `hopper.drake.wind.WindSource`, seeded from the run seed."""
 
-    `velocity` only reads state; the sim loop calls `advance(dt)` once per physics step so RK4
-    stages all see the same gust.
-    """
-
-    def __init__(self, mean_i: np.ndarray, gust_sigma: float, gust_tau: float, rng):
-        self.mean_i = np.asarray(mean_i, dtype=float)
-        self.gust_sigma = gust_sigma
-        self.gust_tau = gust_tau
-        self._rng = rng
-        self._gust = np.zeros(3)
+    mean_i: np.ndarray
+    gust_sigma: float = 0.0
+    gust_tau: float = 1.0
 
     @classmethod
     def none(cls) -> "Wind":
-        return cls(np.zeros(3), 0.0, 1.0, np.random.default_rng(0))
-
-    def reset(self, seed: int) -> None:
-        self._rng = np.random.default_rng(seed)
-        self._gust = np.zeros(3)
-
-    def advance(self, dt: float) -> None:
-        if self.gust_sigma == 0.0:
-            return
-        phi = np.exp(-dt / self.gust_tau)  # exact discretisation, valid for any dt
-        noise = self._rng.standard_normal(3)
-        self._gust = phi * self._gust + self.gust_sigma * np.sqrt(1.0 - phi**2) * noise
-
-    def velocity(self, t: float, pos_i: np.ndarray) -> np.ndarray:
-        return self.mean_i + self._gust
+        return cls(np.zeros(3))
 
 
 @dataclass

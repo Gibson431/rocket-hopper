@@ -2,9 +2,6 @@ import numpy as np
 import pytest
 
 from hopper.config import SensorsConfig
-from hopper.dynamics.environment import Environment
-from hopper.dynamics.mass_model import mass_properties
-from hopper.dynamics.vehicle import vehicle_derivative
 from hopper.math3d import quat_from_axis_angle
 from hopper.sensors.suite import SensorSuite
 from hopper.types import Command, make_state
@@ -55,42 +52,6 @@ def stack(samples, field):
 
 def hover(z=10.0):
     return make_state([0, 0, z], [0, 0, 0], None, [0, 0, 0], 20.0)
-
-
-# --- specific force from the vehicle model -------------------------------------------------
-
-
-def test_specific_force_is_zero_in_free_fall(cfg):
-    x = make_state([0, 0, 50], [0, 0, 0], None, [0, 0, 0], 20.0)
-    info = {}
-    vehicle_derivative(0.0, x, OFF, cfg, Environment(aero_enabled=False), info=info)
-    assert info["specific_force_B"] == pytest.approx(np.zeros(3), abs=1e-9)
-
-
-def test_specific_force_at_rest_on_legs_is_plus_g_upward(cfg):
-    mp = mass_properties(20.0, cfg)
-    k, n = cfg.legs.stiffness, cfg.legs.count
-    depth = mp.mass * G / (n * k)
-    z = mp.com_z + cfg.legs.length - depth
-    x = make_state([0, 0, z], [0, 0, 0], None, [0, 0, 0], 20.0)
-    info = {}
-    vehicle_derivative(0.0, x, OFF, cfg, Environment(aero_enabled=False), info=info)
-    assert info["specific_force_B"] == pytest.approx([0, 0, G], abs=1e-6)
-
-
-def test_specific_force_from_thrust_is_thrust_over_mass_in_body_frame(cfg):
-    x = make_state(
-        [0, 0, 50],
-        [0, 0, 0],
-        quat_from_axis_angle(np.array([1.0, 0, 0]), 0.5),
-        [0, 0, 0],
-        20.0,
-        thr=1.0,
-    )
-    info = {}
-    vehicle_derivative(0.0, x, OFF, cfg, Environment(aero_enabled=False), info=info)
-    mass = mass_properties(20.0, cfg).mass
-    assert info["specific_force_B"] == pytest.approx([0, 0, cfg.engine.thrust_max / mass], rel=1e-9)
 
 
 # --- IMU -----------------------------------------------------------------------------------

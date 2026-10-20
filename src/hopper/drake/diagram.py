@@ -56,8 +56,8 @@ def build_diagram(
     visual: bool = True,
     meshcat: Meshcat | None = None,
 ) -> DrakeRig:
-    """The wind stream is seeded from `rng` exactly like the legacy `Simulation` does, then the
-    sensors spawn their generators from it (the legacy order). With no faults and perfect state the
+    """The wind stream is seeded from `rng` as the first draw, then the
+    sensors spawn their generators from it. With no faults and perfect state the
     diagram has neither fault nor sensor systems. `visual=False` leaves out the illustration
     geometry (dynamics are identical); `meshcat` adds a live visualizer (needs the geometry)."""
     if meshcat is not None and not visual:

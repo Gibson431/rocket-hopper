@@ -13,11 +13,10 @@ from hopper.drake.aero import AeroLoads
 from hopper.drake.combiner import ForceCombiner
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
-from hopper.drake.state import set_legacy_state, to_legacy_state
+from hopper.drake.state import set_state_vector, to_state_vector
 from hopper.drake.wind import WindSource
-from hopper.dynamics.aero import aero_loads
 from hopper.dynamics.environment import atmosphere
-from hopper.dynamics.mass_model import mass_properties
+from hopper.math3d import quat_rotate, quat_rotate_inv
 from hopper.types import make_state
 
 
@@ -34,7 +33,7 @@ def _eval(cfg, x, wind=(0.0, 0.0, 0.0), enabled=True, prop=None):
     builder.Connect(psrc.get_output_port(), aero.get_propellant_input_port())
     diagram = builder.Build()
     ctx = diagram.CreateDefaultContext()
-    set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), x, cfg)
+    set_state_vector(plant, plant.GetMyMutableContextFromRoot(ctx), x, cfg)
     return aero.get_force_output_port().Eval(aero.GetMyContextFromRoot(ctx))[0]
 
 
@@ -61,8 +60,18 @@ def test_aero_disabled_gives_zero_load(cfg):
 def test_aero_force_matches_quasi_steady_drag_law(cfg):
     x = _moving_tilted()
     wind = np.array([4.0, 1.0, 0.0])
-    mp = mass_properties(cfg.tank.prop_mass_initial, cfg)
-    f_expected, _ = aero_loads(x[3:6], x[6:10], wind, atmosphere(x[2]).density, mp, cfg.aero)
+    # per-axis drag opposite the air-relative velocity, each scaled by the total speed
+    a = cfg.aero
+    v_b = quat_rotate_inv(x[6:10], x[3:6] - wind)
+    k = -0.5 * atmosphere(x[2]).density * np.linalg.norm(v_b)
+    f_b = k * np.array(
+        [
+            a.cd_lateral * a.area_lateral * v_b[0],
+            a.cd_lateral * a.area_lateral * v_b[1],
+            a.cd_axial * a.area_axial * v_b[2],
+        ]
+    )
+    f_expected = quat_rotate(x[6:10], f_b)
     out = _eval(cfg, x, wind=wind)
     assert out.F_Bq_W.translational() == pytest.approx(f_expected, rel=1e-9, abs=1e-9)
     # applied at the centre of pressure, on the body z axis from the pivot
@@ -100,9 +109,9 @@ def test_gravity_can_be_switched_off(cfg):
         diagram = builder.Build()
         sim = make_simulator(diagram, dt=1e-3)
         ctx = sim.get_mutable_context()
-        set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), _state([0, 0, 5.0]), cfg)
+        set_state_vector(plant, plant.GetMyMutableContextFromRoot(ctx), _state([0, 0, 5.0]), cfg)
         sim.AdvanceTo(0.5)
-        x = to_legacy_state(plant, plant.GetMyContextFromRoot(sim.get_context()))
+        x = to_state_vector(plant, plant.GetMyContextFromRoot(sim.get_context()))
         assert x[5] == pytest.approx(0.5 * expect, abs=1e-9)
 
 
@@ -120,7 +129,7 @@ def test_full_diagram_with_wind_and_aero_runs_finite(cfg):
     builder.Connect(comb.get_output_port(), plant.get_applied_spatial_force_input_port())
     sim = Simulator(builder.Build())
     ctx = sim.get_mutable_context()
-    set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), _moving_tilted(), cfg)
+    set_state_vector(plant, plant.GetMyMutableContextFromRoot(ctx), _moving_tilted(), cfg)
     sim.AdvanceTo(0.5)
     assert np.all(np.isfinite(plant.GetPositionsAndVelocities(plant.GetMyContextFromRoot(ctx))))
 
@@ -149,8 +158,8 @@ def test_drag_on_a_tilted_vehicle_in_a_crosswind_weathercocks_the_nose_into_the_
     builder.Connect(aero.get_force_output_port(), plant.get_applied_spatial_force_input_port())
     sim = Simulator(builder.Build())
     ctx = sim.get_mutable_context()
-    set_legacy_state(plant, plant.GetMyMutableContextFromRoot(ctx), _state([0, 0, 50.0]), cfg)
+    set_state_vector(plant, plant.GetMyMutableContextFromRoot(ctx), _state([0, 0, 50.0]), cfg)
     sim.AdvanceTo(0.2)
-    x = to_legacy_state(plant, plant.GetMyContextFromRoot(ctx))
+    x = to_state_vector(plant, plant.GetMyContextFromRoot(ctx))
     assert x[3] > 0.0  # dragged along the wind
     assert x[11] > 0.0  # omega_y: weathercock torque about the CoM

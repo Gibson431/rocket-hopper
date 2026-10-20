@@ -19,8 +19,8 @@ body frame, mass updating and integrator), `src/hopper/dynamics/mass_model.py`,
   propellant mass, builds the full `SpatialInertia` from `mass_properties` and sets it with
   `SetSpatialInertiaInBodyFrame` (never `SetMass` and `SetCenterOfMassInBodyFrame` separately; that
   breaks the inertia), so there is one mass model.
-- `hopper/drake/state.py`: `to_legacy_state(plant, context) -> ndarray(19)` partial view (pos, vel,
-  quat, omega) and `set_legacy_state(plant, context, x)`, handling the CoM-vs-body-frame offset and
+- `hopper/drake/state.py`: `to_state_vector(plant, context) -> ndarray(19)` partial view (pos, vel,
+  quat, omega) and `set_state_vector(plant, context, x)`, handling the CoM-vs-body-frame offset and
   Drake's quaternion/velocity frame conventions as decided in S12. The propellant, throttle and gimbal
   slots are owned by S15 systems.
 - `hopper/drake/sim.py` (minimal): `make_simulator(diagram, integrator, dt)` configured per S12.

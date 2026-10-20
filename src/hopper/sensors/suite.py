@@ -44,7 +44,8 @@ class _Channel:
 class SensorSuite:
     """`sample(t, x, info)` must be called every physics step, with increasing `t`.
 
-    `info` needs `specific_force_B` (see `vehicle_derivative`) on steps where `needs_info(t)`.
+    `info` needs `specific_force_B` (specific force at the CoM, body frame) on steps where
+    `needs_info(t)`.
     Returns a `SensorData` stamped with the delivery time `t`; a field is None unless a sample
     arrived in this call. Sensors draw from child generators spawned in a fixed order, so
     reconfiguring one sensor leaves the noise of the others unchanged.

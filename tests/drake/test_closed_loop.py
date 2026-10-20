@@ -12,8 +12,8 @@ from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
 from hopper.scenario_glue import run_hop
-from hopper.sim.engine import SimResult
 from hopper.sim.events import Outcome
+from hopper.sim.result import SimResult
 from hopper.types import Command, make_state
 
 HOVER_Z = 20.0  # CoM height: far from the ground for every short run below
@@ -140,7 +140,7 @@ def test_log_decimation_keeps_every_nth_row_and_the_terminal_row(cfg):
 
 def gusty_run(cfg, seed):
     late = Command(0.5, np.zeros(2), 0.0)
-    wind = Wind(np.array([2.0, 0.0, 0.0]), 1.5, 1.0, np.random.default_rng(seed))
+    wind = Wind(np.array([2.0, 0.0, 0.0]), 1.5, 1.0)
     sim = make_sim(cfg, CountingController(late), seed=seed, wind=wind, aero=True)
     return sim.run(1.0).log
 
@@ -180,10 +180,10 @@ def test_estimate_body_rate_differs_from_world_rate_when_the_axes_differ(cfg):
     assert est.omega == pytest.approx([0, -1, 0], abs=1e-12)
 
 
-def test_wind_stream_is_seeded_from_the_first_rng_draw_like_the_legacy_engine(cfg):
+def test_wind_stream_is_seeded_from_the_first_rng_draw(cfg):
     from hopper.drake.diagram import build_diagram
 
-    env = Environment(wind=Wind(np.zeros(3), 1.0, 1.0, np.random.default_rng(0)))
+    env = Environment(wind=Wind(np.zeros(3), 1.0, 1.0))
     rig = build_diagram(cfg, CountingController(), env, np.random.default_rng(5))
     expected = int(np.random.default_rng(5).integers(2**32))
     assert rig.wind._seed == expected
@@ -269,7 +269,7 @@ def test_controller_log_hook_columns_are_appended_before_the_event_column(cfg):
 def hop():
     cfg = load_vehicle("configs/vehicle_default.yaml")
     t0 = time.perf_counter()
-    res, s = run_hop(cfg, seed=0, backend="drake")
+    res, s = run_hop(cfg, seed=0)
     wall = time.perf_counter() - t0
     print(f"\nDRAKE HOP wall {wall:.1f} s, {res.t_end / cfg.sim.dt / wall:.0f} steps/s")
     return cfg, res, s
@@ -285,7 +285,7 @@ def test_drake_hop_lands_on_the_site_softly_and_upright(hop):
 
 def test_drake_hop_with_20ms_delay_still_lands(hop):
     cfg, _, _ = hop
-    res, s = run_hop(cfg, seed=0, command_delay=0.020, backend="drake")
+    res, s = run_hop(cfg, seed=0, command_delay=0.020)
     assert res.outcome is Outcome.LANDED
     assert s.landing_error < 0.5
     assert s.touchdown_speed < 1.0
@@ -293,7 +293,7 @@ def test_drake_hop_with_20ms_delay_still_lands(hop):
 
 def test_drake_hop_in_3_mps_wind_still_lands(hop):
     cfg, _, _ = hop
-    res, s = run_hop(cfg, seed=0, wind_mean=(3.0, 0.0, 0.0), backend="drake")
+    res, s = run_hop(cfg, seed=0, wind_mean=(3.0, 0.0, 0.0))
     assert res.outcome is Outcome.LANDED
     assert s.landing_error < 1.5
     assert s.touchdown_speed < 1.0

@@ -11,11 +11,11 @@ from hopper.control.position import (
     PositionController,
     Setpoint,
 )
+from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
 from hopper.math3d import quat_rotate
 from hopper.scenario_glue import control_params_from_config
-from hopper.sim.engine import Simulation
 from hopper.types import Command, StateEstimate, make_state
 
 G = 9.80665
@@ -209,7 +209,7 @@ def hover_x0(cfg, alt, xy=(0.0, 0.0)):
 
 def fly(cfg, params, setpoint_at, x0, t_end, delay=0.0, env=None):
     ctrl = SetpointController(params, setpoint_at)
-    sim = Simulation(
+    sim = DrakeSimulation(
         cfg,
         ctrl,
         env or Environment.default(),

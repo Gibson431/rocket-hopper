@@ -4,18 +4,17 @@ Contact model (docs/DRAKE_DESIGN.md Q4): Drake point contact between a half-spac
 small sphere per foot. Parameter mapping from `LegsConfig`:
 
 - `count`, `radius`, `length`: foot i sits at `[r cos a_i, r sin a_i, -length]` from the gimbal
-  pivot (the body origin), `a_i = 2 pi i / count`, exactly the legacy foot positions. The sphere
+  pivot (the body origin), `a_i = 2 pi i / count`. The sphere
   centre is one sphere radius above the foot point, so the contact point is the foot point.
 - `stiffness`: ground and foot each get `2 k`, so the series value is `k` (Drake combines point
   contact stiffnesses in series).
 - `damping`: not used. Drake's Hunt-Crossley dissipation (s/m) scales the stiffness force instead of
-  being a fixed N s/m; `DISSIPATION` is tuned so a drop does not rebound (the legacy damper is not
-  reproduced).
+  being a fixed N s/m; `DISSIPATION` is tuned so a drop does not rebound.
 - `friction`: Coulomb coefficient on both geometries; `STICTION_TOLERANCE` is the slip speed of full
-  friction (matches the legacy regularisation `V_EPS`).
+  friction.
 
 The engine base has no collision geometry: a base strike ends the run as a crash, so the observer
-only flags it (pivot below the ground, as the legacy `base_strike`).
+only flags it (pivot below the ground).
 """
 
 from dataclasses import dataclass

@@ -1,4 +1,4 @@
-"""Sensors on the Drake diagram: same models and noise streams as the legacy engine."""
+"""Sensors on the Drake diagram: delivery rates, specific force, noise streams and the EKF hop."""
 
 import numpy as np
 import pytest
@@ -7,12 +7,10 @@ from hopper.control.interface import OpenLoopController
 from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
-from hopper.dynamics.vehicle import vehicle_derivative
 from hopper.math3d import quat_error
 from hopper.scenario_glue import run_hop
-from hopper.sim.engine import Simulation
 from hopper.sim.events import Outcome
-from hopper.types import GIM, GIMR, PROP, THR, Command, make_state
+from hopper.types import Command, make_state
 
 OFF = Command(0.0, np.zeros(2), 0.0)
 FIELDS = ("gyro", "accel", "baro_alt", "gps_pos", "gps_vel", "lidar_range")
@@ -122,30 +120,25 @@ def test_closed_loop_accelerometer_reads_g_up_for_a_vehicle_at_rest_on_the_pad(c
     assert np.allclose(acc.mean(axis=0), [0.0, 0.0, G], atol=0.05)
 
 
-def test_closed_loop_specific_force_matches_the_legacy_model_during_a_burn(cfg):
+def test_closed_loop_specific_force_is_thrust_over_mass_along_the_gimbal_during_a_burn(cfg):
     sim = DrakeSimulation(
         cfg,
         OpenLoopController(command=Command(0.6, np.array([0.02, -0.03]), 0.0)),
-        Environment.default(),
+        Environment(aero_enabled=False),
         high_state(),
         np.random.default_rng(0),
         perfect_state=False,
     )
     sim.run(1.0)
-    ctx = sim.context
-    rig = sim.rig
+    ctx, rig = sim.context, sim.rig
     f_drake = rig.sensors.specific_force(rig.sensors.GetMyContextFromRoot(ctx))
-    from hopper.drake.state import to_legacy_state
-
-    x = to_legacy_state(rig.plant, rig.plant.GetMyContextFromRoot(ctx))
-    es = rig.engine.GetMyContextFromRoot(ctx).get_continuous_state_vector().CopyToVector()
-    x[PROP], x[THR], x[GIM], x[GIMR] = es[0], es[1], es[2:4], es[4:6]
-    cmd = rig.host.get_command_output_port().Eval(rig.host.GetMyContextFromRoot(ctx))
-    applied = Command(cmd[0], cmd[1:3], cmd[3])
-    info = {}
-    vehicle_derivative(1.0, x, applied, cfg, Environment.default(), info=info)
-    assert np.linalg.norm(info["specific_force_B"]) > 5.0  # thrusting, not a trivial zero
-    assert np.allclose(f_drake, info["specific_force_B"], atol=1e-3)
+    prop, thr, gx, gy = (
+        rig.engine.GetMyContextFromRoot(ctx).get_continuous_state_vector().CopyToVector()[:4]
+    )
+    direction = np.array([np.cos(gx) * np.sin(gy), -np.sin(gx), np.cos(gx) * np.cos(gy)])
+    expected = cfg.engine.thrust_max * thr * direction / mass_properties(prop, cfg).mass
+    assert np.linalg.norm(expected) > 5.0  # thrusting, not a trivial zero
+    assert np.allclose(f_drake, expected, atol=1e-3)
 
 
 def test_closed_loop_same_seed_is_bit_identical_and_other_seed_differs(cfg):
@@ -158,29 +151,8 @@ def test_closed_loop_same_seed_is_bit_identical_and_other_seed_differs(cfg):
     assert not np.array_equal(run(3), run(4))
 
 
-def test_closed_loop_noise_stream_per_step_matches_the_legacy_engine(cfg):
-    """At rest in space every field is a pure noise stream, so with a controller call on every
-    step the Drake delivery equals the legacy one step for step: same seed, same spawn order, same
-    latency (Drake runs the sensors' unrestricted update before the host's discrete update)."""
-    cfg1 = every_step(cfg)
-    leg, dr = Recorder(), Recorder()
-    Simulation(cfg1, leg, space(), high_state(), np.random.default_rng(5), perfect_state=False).run(
-        0.4
-    )
-    drake_sim(cfg1, dr, seed=5).run(0.4)
-    n = 0
-    for (_, a), (_, b) in zip(leg.calls, dr.calls, strict=True):
-        for f in FIELDS:
-            x, y = getattr(a, f), getattr(b, f)
-            assert (x is None) == (y is None)
-            if x is not None:
-                n += 1
-                assert np.allclose(x, y, atol=1e-9, rtol=0)
-    assert n > 300  # imu 2 fields x ~320/2 + baro + gps
-
-
 def test_closed_loop_ekf_hop_lands_with_estimation_errors_in_the_s10_bounds(cfg):
-    res, s = run_hop(cfg, seed=0, perfect_state=False, backend="drake")
+    res, s = run_hop(cfg, seed=0, perfect_state=False)
     assert res.outcome is Outcome.LANDED
     assert s.landing_error < 1.0
     assert s.touchdown_speed < 1.5

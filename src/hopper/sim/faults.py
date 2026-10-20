@@ -1,4 +1,4 @@
-"""Time-triggered faults, applied by the engine at three seams.
+"""Time-triggered faults, applied by the Drake diagram at three seams.
 
     apply_command(t, cmd)   what the actuators receive (stuck gimbal, engine out)
     modify_params(t, cfg)   the physics parameters (thrust scale, slower gimbal); the controller
