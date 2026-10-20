@@ -171,6 +171,24 @@ def test_logged_state_starts_at_the_initial_state_and_mass_follows_the_propellan
     assert last["thrust"] == pytest.approx(cfg.engine.thrust_max * last["thr"])
 
 
+def test_estimate_body_rate_differs_from_world_rate_when_the_axes_differ(cfg):
+    prop = cfg.tank.prop_mass_initial
+    h = np.sqrt(0.5)
+    # yawed 90 deg about z (x_B points north): world rate (1, 0, 0) is body rate (0, -1, 0)
+    s = np.array([h, 0, 0, h, 0, 0, 0, 1, 0, 0, 0, 0, 0.0])
+    est = estimate_from_plant_state(s, prop, cfg, 0.0)
+    assert est.omega == pytest.approx([0, -1, 0], abs=1e-12)
+
+
+def test_wind_stream_is_seeded_from_the_first_rng_draw_like_the_legacy_engine(cfg):
+    from hopper.drake.diagram import build_diagram
+
+    env = Environment(wind=Wind(np.zeros(3), 1.0, 1.0, np.random.default_rng(0)))
+    rig = build_diagram(cfg, CountingController(), env, np.random.default_rng(5))
+    expected = int(np.random.default_rng(5).integers(2**32))
+    assert rig.wind._seed == expected
+
+
 def test_gimbal_state_is_logged_in_its_own_columns(cfg):
     late = Command(0.5, np.array([0.05, -0.03]), 0.0)
     sim = make_sim(cfg, CountingController(late))
