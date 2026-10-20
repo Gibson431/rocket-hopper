@@ -119,8 +119,8 @@ real acceptance is that the S09-S11 controller scenarios fly on the Drake backen
 
 S15, S16 and S17 run in parallel after S14; S21 can run alongside S19-S20.
 
-**Known design problems** (S12 answers them): Drake has no fixed-step RK4 (the "fixed-step RK4" rule is
-amended in S12/S22); `MultibodyPlant` mass is a context parameter, not a state, so burning propellant
+**Known design problems** (S12 answers them): Drake has no RK4 (the integrator rule was
+rewritten in S12/S22 as fixed-step RK3); `MultibodyPlant` mass is a context parameter, not a state, so burning propellant
 needs an updater system; the state vector's body frame is at the CoM, Drake's is fixed on the body; Python
 `LeafSystem` callbacks may be slower than the current 1300 steps/s; Drake objects are not picklable
 (build the diagram inside each Monte Carlo worker). Found while checking feasibility: a `LeafSystem`

@@ -33,7 +33,12 @@ STALE = re.compile(
         ]
     )
 )
-SCANNED = [REPO / d for d in ("src", "tests", "scripts", ".github")] + [REPO / "README.md"]
+SCANNED = [REPO / d for d in ("src", "tests", "scripts", ".github")] + [
+    REPO / "README.md",
+    REPO / "docs" / "CONVENTIONS.md",
+    REPO / "docs" / "PLAN.md",
+    REPO / "docs" / "AGENT_START.md",
+]
 
 
 @pytest.mark.parametrize("rel", DELETED)
