@@ -1,10 +1,10 @@
 # Gimbal jams 2 deg off-centre on the y axis at t = 5 s. Expected outcome: CRASHED. Pitch authority
 # is gone (the x axis cannot produce pitch torque), so this is a regression marker for fault handling.
 name: hop_gimbal_stuck
-vehicle: configs/vehicle_default.yaml
+vehicle: configs/vehicles/vehicle_no_rcs.yaml
 seed: 0
 estimation: ekf
 t_max: 60
-mission: {target_alt: 10, hover_time: 3, target_xy: [3, 0]}
+mission: { target_alt: 10, hover_time: 3, target_xy: [3, 0] }
 faults:
-  - {type: gimbal_stuck, axis: y, at: 5.0, value_deg: 2.0}
+  - { type: gimbal_stuck, axis: y, at: 5.0, value_deg: 2.0 }

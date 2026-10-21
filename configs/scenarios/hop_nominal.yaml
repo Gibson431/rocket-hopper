@@ -1,7 +1,7 @@
 name: hop_nominal
-vehicle: configs/vehicle_default.yaml
+vehicle: configs/vehicles/vehicle_default.yaml
 seed: 0
 estimation: ekf
 t_max: 60
-initial: {pos: [0, 0, 0], vel: [0, 0, 0], tilt_deg: 0, yaw_deg: 0}
-mission: {target_alt: 10, hover_time: 3, target_xy: [3, 0]}
+initial: { pos: [0, 0, 0], vel: [0, 0, 0], tilt_deg: 0, yaw_deg: 0 }
+mission: { target_alt: 10, hover_time: 3, target_xy: [3, 0] }

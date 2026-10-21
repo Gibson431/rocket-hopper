@@ -1,9 +1,9 @@
 # Gimbal actuator slowed to 20% of its rate limit at t = 3 s; the hop should still land.
 name: hop_gimbal_fault
-vehicle: configs/vehicle_default.yaml
+vehicle: configs/vehicles/vehicle_default.yaml
 seed: 0
 estimation: ekf
 t_max: 60
-mission: {target_alt: 10, hover_time: 3, target_xy: [3, 0]}
+mission: { target_alt: 10, hover_time: 3, target_xy: [3, 0] }
 faults:
-  - {type: gimbal_slow, at: 3.0, rate_factor: 0.2}
+  - { type: gimbal_slow, at: 3.0, rate_factor: 0.2 }
