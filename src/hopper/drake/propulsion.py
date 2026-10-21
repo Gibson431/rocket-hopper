@@ -40,7 +40,9 @@ _PARAMS = (
 
 
 def _param_vector(cfg: VehicleConfig) -> np.ndarray:
-    return np.array([getattr(cfg.engine, n) for n in _PARAMS] + [cfg.rcs.max_roll_torque])
+    return np.array(
+        [getattr(cfg.engine, n) for n in _PARAMS] + [cfg.rcs.max_roll_torque if cfg.rcs else 0.0]
+    )
 
 
 class _Params:

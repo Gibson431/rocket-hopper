@@ -4,7 +4,7 @@ import pytest
 
 from hopper.config import VehicleConfig, load_vehicle
 
-DEFAULT = Path(__file__).parent.parent / "configs" / "vehicle_default.yaml"
+DEFAULT = Path(__file__).parent.parent / "configs" / "vehicles" / "vehicle_default.yaml"
 
 
 # A regression test is any test that runs a simulation end to end (a scenario, a closed loop, a

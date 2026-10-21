@@ -13,7 +13,7 @@ from hopper.analysis.logger import Logger
 from hopper.analysis.plots import save_all
 from hopper.config import load_vehicle
 
-DEFAULT_VEHICLE = Path(__file__).parent.parent / "configs" / "vehicle_default.yaml"
+DEFAULT_VEHICLE = Path(__file__).parent.parent / "configs" / "vehicles" / "vehicle_default.yaml"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -23,12 +23,16 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--replay", action="store_true", help="play the run in Meshcat")
     ap.add_argument("--html", default=None, help="write a static Meshcat HTML animation")
     ap.add_argument("--speed", type=float, default=1.0, help="replay speed (1 = real time)")
-    ap.add_argument("--vehicle", default=str(DEFAULT_VEHICLE), help="vehicle config for the geometry")
+    ap.add_argument(
+        "--vehicle", default=str(DEFAULT_VEHICLE), help="vehicle config for the geometry"
+    )
     args = ap.parse_args(argv)
 
     log = Logger.load(args.log)
-    out = Path(args.out) if args.out else Path(args.log).with_suffix("").with_name(
-        Path(args.log).stem + "_figs"
+    out = (
+        Path(args.out)
+        if args.out
+        else Path(args.log).with_suffix("").with_name(Path(args.log).stem + "_figs")
     )
     for path in save_all(log, out):
         print(f"wrote {path}")

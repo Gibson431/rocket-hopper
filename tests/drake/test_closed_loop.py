@@ -267,7 +267,7 @@ def test_controller_log_hook_columns_are_appended_before_the_event_column(cfg):
 
 @pytest.fixture(scope="module")
 def hop():
-    cfg = load_vehicle("configs/vehicle_default.yaml")
+    cfg = load_vehicle("configs/vehicles/vehicle_default.yaml")
     t0 = time.perf_counter()
     res, s = run_hop(cfg, seed=0)
     wall = time.perf_counter() - t0

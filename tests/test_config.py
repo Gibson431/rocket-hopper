@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from hopper import config as cfg
 
-DEFAULT = Path(__file__).parent.parent / "configs" / "vehicle_default.yaml"
+DEFAULT = Path(__file__).parent.parent / "configs" / "vehicles" / "vehicle_default.yaml"
 
 
 def raw() -> dict:
@@ -104,5 +104,18 @@ def test_unknown_field_raises_validation_error(tmp_path):
 def test_controller_rate_must_not_exceed_physics_rate(tmp_path):
     data = raw()
     data["sim"]["controller_rate"] = 5000.0
+    with pytest.raises(ValidationError):
+        cfg.load_vehicle(write(tmp_path, data))
+
+
+def test_rcs_may_be_omitted_and_means_no_roll_authority(tmp_path):
+    data = yaml.safe_load(DEFAULT.read_text())
+    del data["rcs"]
+    assert cfg.load_vehicle(write(tmp_path, data)).rcs is None
+
+
+def test_rcs_max_roll_torque_must_be_positive(tmp_path):
+    data = yaml.safe_load(DEFAULT.read_text())
+    data["rcs"] = {"max_roll_torque": 0.0}
     with pytest.raises(ValidationError):
         cfg.load_vehicle(write(tmp_path, data))

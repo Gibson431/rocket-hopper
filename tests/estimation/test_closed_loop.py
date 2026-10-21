@@ -57,7 +57,7 @@ def rms(a):
 
 @pytest.fixture(scope="module")
 def cfg():
-    return load_vehicle("configs/vehicle_default.yaml")
+    return load_vehicle("configs/vehicles/vehicle_default.yaml")
 
 
 @pytest.fixture(scope="module")

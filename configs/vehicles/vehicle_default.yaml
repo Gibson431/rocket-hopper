@@ -21,7 +21,7 @@ engine:
 rcs:
   max_roll_torque: 5.0
 legs:
-  count: 2
+  count: 4
   radius: 0.6  # foot circle
   length: 0.6  # feet sit this far below the base, clearing the nozzle
   stiffness: 30000.0

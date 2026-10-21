@@ -47,7 +47,7 @@ def runs(cfg_module):
 def cfg_module():
     from hopper.config import load_vehicle
 
-    return load_vehicle("configs/vehicle_default.yaml")
+    return load_vehicle("configs/vehicles/vehicle_default.yaml")
 
 
 def test_average_nees_over_seeded_runs_is_inside_the_chi_square_bounds(runs):

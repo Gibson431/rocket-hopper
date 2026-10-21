@@ -22,7 +22,7 @@ def control_params_from_config(cfg: VehicleConfig) -> ControlParams:
         thrust_min_frac=cfg.engine.thrust_min_frac,
         gimbal_max=cfg.engine.gimbal_max,
         gimbal_rate_max=cfg.engine.gimbal_rate_max,
-        max_roll_torque=cfg.rcs.max_roll_torque,
+        max_roll_torque=cfg.rcs.max_roll_torque if cfg.rcs else 0.0,
         inertia_diag_dry=tuple(cfg.mass.dry_inertia),
         dry_mass=cfg.mass.dry_mass,
         dry_com_z=cfg.mass.dry_com_z,

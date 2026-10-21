@@ -31,7 +31,11 @@ QUICK = {"target_alt": 3.0, "hover_time": 0.5, "target_xy": [1.0, 0.0]}
 
 
 def _write(tmp_path, **overrides):
-    d = {"name": "t", "vehicle": str(SCENARIOS.parent / "vehicle_default.yaml"), "mission": QUICK}
+    d = {
+        "name": "t",
+        "vehicle": str(SCENARIOS.parent / "vehicles" / "vehicle_default.yaml"),
+        "mission": QUICK,
+    }
     d.update(overrides)
     p = tmp_path / "s.yaml"
     p.write_text(yaml.safe_dump(d))

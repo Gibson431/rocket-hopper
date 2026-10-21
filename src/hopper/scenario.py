@@ -12,8 +12,8 @@ from typing import Annotated, Literal
 
 import numpy as np
 import yaml
-from pydrake.all import Meshcat
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, create_model
+from pydrake.all import Meshcat
 
 from hopper.config import VehicleConfig, load_vehicle
 from hopper.control.mission import MissionController, MissionParams
@@ -103,7 +103,7 @@ class Dispersions(_Model):
 
 class Scenario(_Model):
     name: str
-    vehicle: str = "configs/vehicle_default.yaml"
+    vehicle: str = "configs/vehicles/vehicle_default.yaml"
     seed: int = 0
     estimation: Literal["ekf", "perfect"] = "perfect"
     t_max: Annotated[float, Field(gt=0)] = 60.0

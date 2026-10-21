@@ -112,7 +112,7 @@ Models are frozen and reject unknown keys. `make_state` renormalises the quatern
 - `tank`: `prop_mass_initial`, `bottom_z`, `height`, `radius` (uniform-density cylinder)
 - `engine`: `thrust_max`, `thrust_min_frac`, `isp`, `throttle_tau`, `gimbal_max`,
   `gimbal_rate_max`, `gimbal_wn`, `gimbal_zeta`
-- `rcs`: `max_roll_torque`
+- `rcs` (optional; omit for no RCS): `max_roll_torque` (> 0); `VehicleConfig.rcs` is `None` when omitted
 - `legs`: `count`, `radius` (foot circle), `length`, `stiffness`, `damping`, `friction`
 - `aero`: `cd_axial`, `cd_lateral`, `area_axial`, `area_lateral`, `cp_z`
 - `sensors`: `imu`, `baro`, `gps`, `lidar` groups (rate, latency, noise, range; SI units, rad). `SensorData.t` is the controller call time; samples carry sensor latency; `baro_alt` and `lidar_range` are relative to the CoM height. `SensorSuite.sample` takes `info["specific_force_B"]`, which `drake.sensors.SensorsSystem` supplies.

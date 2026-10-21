@@ -98,8 +98,11 @@ class AttitudeController:
             gimbal = self._last_gimbal + np.clip(raw - self._last_gimbal, -step, step)
         self._last_gimbal = gimbal.copy()
 
-        roll = float(np.clip(tau[2] / p.max_roll_torque, -1.0, 1.0))
-        saturated = saturated or abs(tau[2]) > p.max_roll_torque
+        if p.max_roll_torque > 0.0:
+            roll = float(np.clip(tau[2] / p.max_roll_torque, -1.0, 1.0))
+            saturated = saturated or abs(tau[2]) > p.max_roll_torque
+        else:  # no RCS: roll is uncontrolled, so there is nothing to saturate
+            roll = 0.0
         return AttitudeOutput(gimbal, roll, tau, saturated, e)
 
     def _unscaled_peak(self, torque_xy: np.ndarray, thrust: float, com_z: float) -> float:

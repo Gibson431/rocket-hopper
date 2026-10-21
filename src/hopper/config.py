@@ -40,7 +40,7 @@ class EngineConfig(_Model):
 
 
 class RcsConfig(_Model):
-    max_roll_torque: NonNeg
+    max_roll_torque: Pos
 
 
 class LegsConfig(_Model):
@@ -136,7 +136,7 @@ class VehicleConfig(_Model):
     mass: MassConfig
     tank: TankConfig
     engine: EngineConfig
-    rcs: RcsConfig
+    rcs: RcsConfig | None = None  # omitted = no RCS
     legs: LegsConfig
     aero: AeroConfig
     sensors: SensorsConfig = SensorsConfig()

@@ -297,3 +297,12 @@ def test_saturated_flag_is_set_when_roll_torque_exceeds_the_rcs(ctrl, params):
     out = update(ctrl, params, q=q)
     assert out.saturated
     assert np.all(out.gimbal == 0.0)
+
+
+def test_vehicle_without_rcs_commands_no_roll_and_is_not_flagged_saturated(cfg, gains):
+    p = control_params_from_config(cfg.model_copy(update={"rcs": None}))
+    ctrl = AttitudeController(p, gains)
+    out = update(ctrl, p, q=quat_from_axis_angle([0, 0, 1], -0.3))
+    assert out.roll_torque == 0.0
+    assert not out.saturated
+    assert np.all(np.isfinite(out.gimbal))

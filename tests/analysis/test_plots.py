@@ -46,7 +46,7 @@ def synthetic_log(n: int = N, with_est: bool = False) -> pd.DataFrame:
 def real_log() -> pd.DataFrame:
     from hopper.config import load_vehicle
 
-    cfg = load_vehicle(Path(__file__).parents[2] / "configs" / "vehicle_default.yaml")
+    cfg = load_vehicle(Path(__file__).parents[2] / "configs" / "vehicles" / "vehicle_default.yaml")
     res, _ = run_hop(cfg, t_end=3.0, perfect_state=False)
     return res.log
 

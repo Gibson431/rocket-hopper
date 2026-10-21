@@ -30,7 +30,7 @@ SMALL = {
 def _scenario(tmp_path, name="s", **overrides):
     d = {
         "name": name,
-        "vehicle": str(ROOT / "configs" / "vehicle_default.yaml"),
+        "vehicle": str(ROOT / "configs" / "vehicles" / "vehicle_default.yaml"),
         "mission": QUICK,
         "dispersions": SMALL,
         **overrides,
