@@ -3,8 +3,13 @@
 from collections.abc import Sequence
 
 import numpy as np
-
-from hopper.types import Command, Controller, SensorData, StateEstimate, StateFeedbackController
+from hopper_core.types import (
+    Command,
+    Controller,
+    SensorData,
+    StateEstimate,
+    StateFeedbackController,
+)
 
 __all__ = ["Command", "Controller", "OpenLoopController", "StateFeedbackController"]
 

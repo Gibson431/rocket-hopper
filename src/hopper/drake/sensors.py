@@ -11,6 +11,8 @@ import copy
 from collections.abc import Sequence
 
 import numpy as np
+from hopper_core.math3d import cross, quat_to_dcm
+from hopper_core.types import N_STATE, OMEGA, POS, PROP, QUAT, VEL, SensorData
 from pydrake.all import AbstractValue, LeafSystem
 from pydrake.multibody.plant import MultibodyPlant
 
@@ -18,10 +20,8 @@ from hopper.config import VehicleConfig
 from hopper.drake.controller_host import estimate_from_plant_state
 from hopper.drake.state import BODY_NAME
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import cross, quat_to_dcm
 from hopper.sensors.suite import SensorSuite
 from hopper.sim.faults import Fault
-from hopper.types import N_STATE, OMEGA, POS, PROP, QUAT, VEL, SensorData
 
 NO_SAMPLES = SensorData(0.0, None, None, None, None, None, None)
 

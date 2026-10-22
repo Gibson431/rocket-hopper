@@ -1,6 +1,6 @@
 import pytest
+from hopper_estimation.mass import PropellantEstimator
 
-from hopper.estimation.mass import PropellantEstimator
 from hopper.scenario_glue import ekf_params_from_config
 
 G0 = 9.80665

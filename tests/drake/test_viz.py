@@ -5,6 +5,8 @@ import math
 import numpy as np
 import pandas as pd
 import pytest
+from hopper_core.math3d import quat_to_dcm
+from hopper_core.types import Command, make_state
 from pydrake.all import DiagramBuilder, Meshcat, RigidTransform, Role, RotationMatrix
 
 from hopper.analysis.logger import COLUMNS
@@ -14,8 +16,6 @@ from hopper.drake.simulation import DrakeSimulation
 from hopper.drake.viz import Replay, record_replay, replay
 from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import quat_to_dcm
-from hopper.types import Command, make_state
 
 
 @pytest.fixture(scope="module")

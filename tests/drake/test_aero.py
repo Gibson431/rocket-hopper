@@ -1,5 +1,7 @@
 import numpy as np
 import pytest
+from hopper_core.math3d import quat_rotate, quat_rotate_inv
+from hopper_core.types import make_state
 from pydrake.all import (
     AbstractValue,
     ConstantVectorSource,
@@ -16,8 +18,6 @@ from hopper.drake.sim import make_simulator
 from hopper.drake.state import set_state_vector, to_state_vector
 from hopper.drake.wind import WindSource
 from hopper.dynamics.environment import atmosphere
-from hopper.math3d import quat_rotate, quat_rotate_inv
-from hopper.types import make_state
 
 
 def _eval(cfg, x, wind=(0.0, 0.0, 0.0), enabled=True, prop=None):

@@ -1,10 +1,10 @@
 """Fixed-throttle attitude hold with perfect-state feedback; the base for the S09 cascade."""
 
 import numpy as np
+from hopper_core.types import Command, SensorData, StateEstimate
 
-from hopper.control.attitude import AttitudeController, AttitudeGains
-from hopper.control.params import ControlParams
-from hopper.types import Command, SensorData, StateEstimate
+from hopper_control.attitude import AttitudeController, AttitudeGains
+from hopper_control.params import ControlParams
 
 
 class AttitudeHoldController:

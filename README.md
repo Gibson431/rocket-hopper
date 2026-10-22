@@ -4,6 +4,18 @@ Python 6-DOF simulator for developing a thrust-vector-controlled (TVC) rocket-ho
 The simulation runs on [Drake](https://drake.mit.edu/) (`pydrake`); the controller and estimator are
 plain Python that never import it.
 
+## Layout
+
+uv workspace. The flight software is split into standalone packages under `packages/`; the root
+`hopper` package is the simulator and the only place they are composed.
+
+| Package | Import | Role |
+|---|---|---|
+| `packages/hopper-core` | `hopper_core` | shared `types` and `math3d` |
+| `packages/hopper-control` | `hopper_control` | attitude/position/mission controller |
+| `packages/hopper-estimation` | `hopper_estimation` | EKF and propellant estimator |
+| root | `hopper` | Drake simulation, sensors, scenarios, analysis |
+
 ## Install and test
 
 ```

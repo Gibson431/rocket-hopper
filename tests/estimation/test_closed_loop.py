@@ -2,9 +2,9 @@
 
 import numpy as np
 import pytest
+from hopper_core.math3d import quat_error
 
 from hopper.config import load_vehicle
-from hopper.math3d import quat_error
 from hopper.scenario_glue import ekf_params_from_config, run_hop
 from hopper.sim.events import Outcome
 

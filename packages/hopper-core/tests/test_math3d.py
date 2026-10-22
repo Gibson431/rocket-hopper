@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
+from hopper_core import math3d as m
 from hypothesis import given
 from hypothesis import strategies as st
-
-from hopper import math3d as m
 
 finite = st.floats(-1.0, 1.0, allow_nan=False, allow_infinity=False)
 unit_quats = (
@@ -167,7 +166,7 @@ def test_quat_normalize_returns_unit_norm():
 
 
 def test_cross_matches_numpy_for_single_and_batched_vectors():
-    from hopper.math3d import cross
+    from hopper_core.math3d import cross
 
     rng = np.random.default_rng(3)
     a, b = rng.normal(size=(2, 3)), rng.normal(size=(2, 3))

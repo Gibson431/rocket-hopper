@@ -3,10 +3,10 @@ in `tests/drake/test_faults.py`."""
 
 import numpy as np
 import pytest
+from hopper_core.types import SensorData
 from pydantic import ValidationError
 
 from hopper.sim.faults import GpsOutage, GyroBias, GyroBiasStep, ThrustScale
-from hopper.types import SensorData
 
 
 def test_unknown_fault_key_is_rejected():

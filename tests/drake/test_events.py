@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from hopper_core.types import OMEGA, make_state
 from pydrake.all import DiagramBuilder
 from test_legs import state_with_lowest_foot
 
@@ -9,7 +10,6 @@ from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
 from hopper.drake.state import set_state_vector
 from hopper.sim.events import Outcome
-from hopper.types import OMEGA, make_state
 
 DT = 0.01
 

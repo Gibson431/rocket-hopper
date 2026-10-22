@@ -1,11 +1,10 @@
 import numpy as np
-
-from hopper.control.interface import (
+from hopper_control.interface import (
     Controller,
     OpenLoopController,
     StateFeedbackController,
 )
-from hopper.types import Command, SensorData, StateEstimate
+from hopper_core.types import Command, SensorData, StateEstimate
 
 
 def est(t):

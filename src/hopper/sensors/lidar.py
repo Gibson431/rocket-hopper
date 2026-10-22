@@ -1,10 +1,10 @@
 """Downward lidar: slant range along -z_B to the ground plane z = 0."""
 
 import numpy as np
+from hopper_core.math3d import quat_to_dcm
+from hopper_core.types import POS, QUAT
 
 from hopper.config import LidarConfig
-from hopper.math3d import quat_to_dcm
-from hopper.types import POS, QUAT
 
 
 class Lidar:

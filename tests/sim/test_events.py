@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
+from hopper_core.math3d import quat_from_axis_angle
+from hopper_core.types import make_state
 
-from hopper.math3d import quat_from_axis_angle
 from hopper.sim.events import ContactOutput, EventMonitor, EventState, Outcome, check_events
-from hopper.types import make_state
 
 DT = 0.01
 

@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
+from hopper_core.math3d import quat_derivative, quat_to_dcm
+from hopper_core.types import OMEGA, POS, QUAT, VEL, make_state
 
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.state import set_state_vector, to_state_vector
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import quat_derivative, quat_to_dcm
-from hopper.types import OMEGA, POS, QUAT, VEL, make_state
 
 
 @pytest.fixture

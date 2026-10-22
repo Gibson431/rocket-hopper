@@ -5,14 +5,14 @@ If you must change anything here, update this file in the same change and log it
 
 ## Tooling
 
-- Python >= 3.12, `src/` layout, package name `hopper`.
+- Python >= 3.12, `src/` layout, workspace of four packages (`packages/hopper-core`, `hopper-control`, `hopper-estimation`; the root `hopper` is the simulator).
 - **uv manages everything.** `.mise.toml` pins `uv` (run `mise install` if `uv` is missing). Use only:
   `uv add <pkg>` / `uv add --dev <pkg>` to add dependencies (never edit the dependency lists by hand
   or use `pip`), `uv sync` to install, `uv run <cmd>` to run anything (pytest, ruff, scripts),
   and commit `uv.lock`. Do not create or activate a virtualenv manually.
 - Runtime deps: numpy, scipy, pydantic>=2, pyyaml, pandas, pyarrow, matplotlib, drake (`pydrake`, simulation side only).
 - Dev deps: pytest, hypothesis, ruff.
-- Write the EKF by hand (no filterpy). Drake is the only simulation backend (see `docs/PLAN.md`, "Drake port"). Flight software (`hopper.control`, `hopper.estimation`) and `hopper.types` / `hopper.math3d` import only the standard library, numpy, scipy and each other; `tests/test_import_boundary.py` enforces the allowlist.
+- Write the EKF by hand (no filterpy). Drake is the only simulation backend (see `docs/PLAN.md`, "Drake port"). Flight software (`hopper_control`, `hopper_estimation`) and `hopper_core.types` / `hopper_core.math3d` import only the standard library, numpy, scipy and each other; `tests/test_import_boundary.py` enforces the allowlist.
 - Commands: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format .`.
 
 ## Units and frames
@@ -33,7 +33,7 @@ If you must change anything here, update this file in the same change and log it
 
 ## State vector (flat numpy array, length 19)
 
-Defined once in `hopper/types.py` as index constants.
+Defined once in `packages/hopper-core/src/hopper_core/types.py` as index constants.
 
 | Index | Name | Meaning |
 |-------|------|---------|
@@ -61,7 +61,7 @@ Thrust acts at the gimbal pivot. Torque about the CoM: `tau = r x F_B` with `r =
 Expanded: `tau = [z_com * F_y, -z_com * F_x, 0]`. So positive `gy` (thrust toward +x_B) gives a torque
 about **-y_B**, and positive `gx` (thrust toward -y_B) gives a torque about **-x_B**. S03 tests pin this.
 
-## Interfaces (in `hopper/types.py`)
+## Interfaces (in `packages/hopper-core/src/hopper_core/types.py`)
 
 ```python
 @dataclass(frozen=True)
@@ -123,7 +123,7 @@ min throttle 30% (750 N), gimbal limit 8 deg, 60 deg/s rate, 4 legs on a 0.6 m r
 Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasible at every mass
 (40% was not: 1000 N exceeds even the full 981 N weight).
 
-## Control package (`hopper.control`)
+## Control package (`hopper_control`)
 
 - `ControlParams` (vehicle facts the controller may know) is built from the config by
   `hopper.scenario_glue.control_params_from_config`; the control package never imports the config.
@@ -132,10 +132,10 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
   `MissionController` (state machine + `PositionController`). All are perfect-state
   (`step_state`) until S10 adds the estimator.
 
-## Estimation package (`hopper.estimation`)
+## Estimation package (`hopper_estimation`)
 
-- Flight software like `hopper.control`: it may import only `hopper.types` and `hopper.math3d`
-  (enforced by `tests/estimation/test_estimation_boundary.py`).
+- Flight software like `hopper_control`: it may import only `hopper_core.types` and `hopper_core.math3d`
+  (enforced by `tests/test_import_boundary.py`).
 - `EKF(EkfParams)` is an error-state filter (16 states: dp, dv, dtheta, dbg, dba, dbaro; definitions in the
   `ekf.py` docstring). `EkfParams` is built from the sensor config by
   `hopper.scenario_glue.ekf_params_from_config`. `EKF.process(SensorData, grounded=False)` returns a
@@ -177,11 +177,11 @@ Minimum throttle is 30% (750 N), below the dry weight (785 N), so hover is feasi
 
 ## Drake package (`hopper.drake`, S14+)
 
-- Simulation side only; `hopper.control`, `hopper.estimation`, `hopper.types`, `hopper.math3d` never import it
+- Simulation side only; `hopper_control`, `hopper_estimation`, `hopper_core.types`, `hopper_core.math3d` never import it
   or `pydrake` (tests enforce this). Decisions are in `docs/DRAKE_DESIGN.md`.
 - `plant.build_vehicle_plant(cfg, builder=None, finalize=True) -> (plant, scene_graph)`: one floating body
   `"hopper"`, continuous, gravity 9.80665. `sim.make_simulator(diagram, dt=1e-3)`: fixed-step RK3.
-- **Body-frame rule:** the Drake body origin is the gimbal pivot (base), not the CoM. The 19-element state vector of `hopper.types`
+- **Body-frame rule:** the Drake body origin is the gimbal pivot (base), not the CoM. The 19-element state vector of `hopper_core.types`
   holds the CoM with the rate in the body frame; Drake holds origin position/velocity and a world-frame rate.
   `state.to_state_vector(plant, ctx)` / `set_state_vector(plant, ctx, x, cfg)` convert (CoM offset read from
   the spatial inertia in the context; quaternion returned with w >= 0; PROP/THR/GIM/GIMR are 0, owned by other systems).

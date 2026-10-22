@@ -29,7 +29,7 @@ time `t` describes the vehicle `imu_delay` earlier (latency plus the age of the 
 A sensor sample taken at `s` is therefore applied at `s + imu_delay`. The estimate is not
 extrapolated over that gap.
 
-Mass is not a filter state; see `hopper.estimation.mass`. Yaw has no reference (no magnetometer):
+Mass is not a filter state; see `hopper_estimation.mass`. Yaw has no reference (no magnetometer):
 it starts at 0 and is only weakly observable through horizontal acceleration against GPS.
 """
 
@@ -37,10 +37,10 @@ from collections import deque
 from dataclasses import dataclass, field
 
 import numpy as np
+from hopper_core.math3d import quat_from_euler_zyx, quat_mul, quat_normalize, quat_to_dcm, skew
+from hopper_core.types import StateEstimate
 
-from hopper.estimation.mass import PropellantEstimator
-from hopper.math3d import quat_from_euler_zyx, quat_mul, quat_normalize, quat_to_dcm, skew
-from hopper.types import StateEstimate
+from hopper_estimation.mass import PropellantEstimator
 
 N_ERR = 16
 _P, _V, _TH, _BG, _BA, _BB = slice(0, 3), slice(3, 6), slice(6, 9), slice(9, 12), slice(12, 15), 15

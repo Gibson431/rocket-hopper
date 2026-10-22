@@ -1,4 +1,4 @@
-"""Adapters between the state vector of `hopper.types` (CoM, body-frame rate) and the Drake body.
+"""Adapters between the `hopper_core.types` state vector (CoM, body-frame rate) and the Drake body.
 
 Drake's body frame has its origin at the gimbal pivot; its state holds the origin position, the
 origin velocity and the angular velocity in the world frame (docs/DRAKE_DESIGN.md Q2). The CoM
@@ -6,12 +6,12 @@ offset comes from the spatial inertia stored in the context, so no propellant ar
 """
 
 import numpy as np
+from hopper_core.math3d import cross, quat_to_dcm
+from hopper_core.types import N_STATE, OMEGA, POS, PROP, QUAT, VEL
 from pydrake.all import Quaternion, RigidTransform, SpatialVelocity
 from pydrake.multibody.plant import MultibodyPlant
 
 from hopper.config import VehicleConfig
-from hopper.math3d import cross, quat_to_dcm
-from hopper.types import N_STATE, OMEGA, POS, PROP, QUAT, VEL
 
 BODY_NAME = "hopper"
 

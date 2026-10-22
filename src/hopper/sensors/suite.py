@@ -3,13 +3,13 @@
 from collections import deque
 
 import numpy as np
+from hopper_core.types import SensorData
 
 from hopper.config import VehicleConfig
 from hopper.sensors.baro import Baro
 from hopper.sensors.gps import Gps
 from hopper.sensors.imu import Imu
 from hopper.sensors.lidar import Lidar
-from hopper.types import SensorData
 
 _EPS = 1e-9
 _NAMES = ("imu", "baro", "gps", "lidar")

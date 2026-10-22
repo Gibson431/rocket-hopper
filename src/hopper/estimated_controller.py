@@ -2,9 +2,8 @@
 control and estimation packages stay independent of each other."""
 
 import numpy as np
-
-from hopper.estimation.ekf import EKF, EkfParams
-from hopper.types import Command, SensorData, StateEstimate
+from hopper_core.types import Command, SensorData, StateEstimate
+from hopper_estimation.ekf import EKF, EkfParams
 
 _OFF = Command(0.0, np.zeros(2), 0.0)
 _GROUNDED = ("IDLE", "LANDED")

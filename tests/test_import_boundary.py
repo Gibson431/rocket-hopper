@@ -1,6 +1,7 @@
-"""Flight software (control, estimation) and the shared `types` / `math3d` modules import only the
-standard library, numpy, scipy and each other: no pydrake and no simulator module. Allowlist form,
-so a new simulator module cannot slip in unnoticed."""
+"""Flight software packages (hopper_core, hopper_control, hopper_estimation) import only the
+standard library, numpy/scipy as listed, hopper_core and themselves: no pydrake, no simulator
+module, and the controller and estimator never import each other. Allowlist form, so a new
+simulator module cannot slip in unnoticed."""
 
 import ast
 import sys
@@ -8,17 +9,18 @@ from pathlib import Path
 
 import pytest
 
-import hopper
-
-ROOT = Path(hopper.__file__).parent
-THIRD_PARTY = {"numpy", "scipy"}
-SHARED = {"hopper.types", "hopper.math3d"}
-# (path under src/hopper, the package it may also import from)
+REPO = Path(__file__).parent.parent
+PACKAGES = REPO / "packages"
+# (package dir, import name, allowed third-party roots, allowed hopper packages)
 UNITS = [
-    ("control", "hopper.control"),
-    ("estimation", "hopper.estimation"),
-    ("types.py", None),
-    ("math3d.py", None),
+    ("hopper-core", "hopper_core", {"numpy"}, {"hopper_core"}),
+    ("hopper-control", "hopper_control", {"numpy"}, {"hopper_core", "hopper_control"}),
+    (
+        "hopper-estimation",
+        "hopper_estimation",
+        {"numpy", "scipy"},
+        {"hopper_core", "hopper_estimation"},
+    ),
 ]
 
 
@@ -36,32 +38,36 @@ def imported_modules(path: Path) -> set[str]:
     return found
 
 
-def violations(path: Path, own: str | None) -> set[str]:
-    allowed_hopper = SHARED | ({own} if own else set())
+def violations(path: Path, third_party: set[str], own: set[str]) -> set[str]:
     bad = set()
     for name in imported_modules(path):
         root = name.split(".")[0]
-        if root in sys.stdlib_module_names or root in THIRD_PARTY:
-            continue
-        if root == "hopper" and (
-            name == "hopper" or any(name == a or name.startswith(a + ".") for a in allowed_hopper)
-        ):
+        if root in sys.stdlib_module_names or root in third_party or root in own:
             continue
         bad.add(name)
     return bad
 
 
-def sources(unit: str) -> list[Path]:
-    path = ROOT / unit
-    return sorted(path.rglob("*.py")) if path.is_dir() else [path]
+def sources(package_dir: str, name: str) -> list[Path]:
+    return sorted((PACKAGES / package_dir / "src" / name).rglob("*.py"))
 
 
-@pytest.mark.parametrize(("unit", "own"), UNITS)
-def test_flight_software_imports_only_the_allowlist(unit, own):
-    files = sources(unit)
-    assert files and all(f.exists() for f in files)
+@pytest.mark.parametrize(("package_dir", "name", "third_party", "own"), UNITS)
+def test_flight_software_imports_only_the_allowlist(package_dir, name, third_party, own):
+    files = sources(package_dir, name)
+    assert files
     for f in files:
-        assert not violations(f, own), f"{f.relative_to(ROOT)} imports {sorted(violations(f, own))}"
+        bad = violations(f, third_party, own)
+        assert not bad, f"{f.relative_to(REPO)} imports {sorted(bad)}"
+
+
+@pytest.mark.parametrize("package_dir", [u[0] for u in UNITS])
+def test_declared_dependencies_exclude_simulator_and_siblings(package_dir):
+    text = (PACKAGES / package_dir / "pyproject.toml").read_text()
+    banned = {"drake", "pydrake", "pandas", "hopper-control", "hopper-estimation"}
+    banned -= {package_dir}
+    deps = text.split("dependencies = [")[1].split("]")[0]
+    assert not [b for b in banned if f'"{b}' in deps]
 
 
 def test_boundary_check_detects_simulator_and_drake_imports(tmp_path):
@@ -73,7 +79,8 @@ def test_boundary_check_detects_simulator_and_drake_imports(tmp_path):
         "from hopper import drake\n"
         "import pandas\n"
     )
-    assert violations(bad, "hopper.control") == {
+    assert violations(bad, {"numpy"}, {"hopper_core", "hopper_control"}) == {
+        "hopper",
         "hopper.dynamics.mass_model",
         "hopper.dynamics.mass_model.mass_properties",
         "hopper.sim",

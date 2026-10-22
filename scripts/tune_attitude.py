@@ -6,9 +6,9 @@ uv run python scripts/tune_attitude.py --wn 3 3 1.5 --zeta 0.8
 import argparse
 
 import numpy as np
+from hopper_control.attitude import AttitudeGains
 
 from hopper.config import load_vehicle
-from hopper.control.attitude import AttitudeGains
 from hopper.dynamics.mass_model import mass_properties
 from hopper.scenario_glue import control_params_from_config
 

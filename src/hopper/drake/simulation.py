@@ -8,10 +8,11 @@ sees x_k without a controller call; the next `AdvanceTo` runs the update, then i
 from collections.abc import Sequence
 
 import numpy as np
+from hopper_control.interface import Controller, StateFeedbackController
+from hopper_core.types import GIM, GIMR, PROP, THR
 from pydrake.all import Meshcat
 
 from hopper.config import VehicleConfig
-from hopper.control.interface import Controller, StateFeedbackController
 from hopper.drake.diagram import build_diagram
 from hopper.drake.logging import DrakeLogger
 from hopper.drake.sim import make_simulator
@@ -20,7 +21,6 @@ from hopper.dynamics.environment import G0, Environment
 from hopper.sim.events import Outcome
 from hopper.sim.faults import Fault
 from hopper.sim.result import SimResult, seed_of
-from hopper.types import GIM, GIMR, PROP, THR
 
 
 class DrakeSimulation:

@@ -2,8 +2,9 @@
 
 import numpy as np
 import pytest
+from hopper_control.interface import OpenLoopController
+from hopper_core.types import Command, make_state
 
-from hopper.control.interface import OpenLoopController
 from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
@@ -16,7 +17,6 @@ from hopper.sim.faults import (
     GyroBiasStep,
     ThrustScale,
 )
-from hopper.types import Command, make_state
 
 
 def _sim(cfg, faults=None, throttle=0.5, gimbal=(0.0, 0.0), controller=None, **kw):

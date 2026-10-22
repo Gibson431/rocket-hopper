@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
-
-from hopper.control.mission import (
+from hopper_control.mission import (
     MissionInputs,
     MissionParams,
     MissionState,

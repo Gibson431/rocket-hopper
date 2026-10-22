@@ -3,9 +3,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import yaml
+from hopper_control.mission import MissionParams
 from pydantic import ValidationError
 
-from hopper.control.mission import MissionParams
 from hopper.drake.simulation import DrakeSimulation
 from hopper.scenario import (
     Scenario,

@@ -95,7 +95,7 @@ The first flyable milestone was **S09** (a hop with perfect state feedback).
 
 **Scope.** Dynamics, environment, contact, integration, the sim loop, fault injection, Monte Carlo
 plumbing and visualisation move to Drake (`pydrake`, in the new `src/hopper/drake/` package). Flight
-software does not move: `hopper.control`, `hopper.estimation`, `hopper.types` and `hopper.math3d` stay
+software does not move: `hopper_control`, `hopper_estimation`, `hopper_core.types` and `hopper_core.math3d` stay
 hand-written, never import `pydrake`, and run unchanged inside a Drake `LeafSystem` host. The sensor
 models are reused as they are.
 

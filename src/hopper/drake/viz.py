@@ -239,7 +239,7 @@ class Replay:
 
 
 def _rot_from_quat(q: np.ndarray) -> np.ndarray:
-    from hopper.math3d import quat_to_dcm
+    from hopper_core.math3d import quat_to_dcm
 
     return quat_to_dcm(q / np.linalg.norm(q))
 

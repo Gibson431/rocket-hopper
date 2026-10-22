@@ -46,11 +46,12 @@ You may be a fresh agent with no memory of earlier sessions. Everything you need
   passing tests **and** a `PASS` from the independent reviewer (`docs/REVIEW.md`).
 - If you are the reviewer subagent, follow `docs/REVIEW.md` Part 2 only: you are read-only and must
   not touch `docs/PROGRESS.md` or start implementing anything.
-- The controller package (`src/hopper/control/`) must never import from `hopper.dynamics`,
-  `hopper.sim`, `hopper.sensors`, `hopper.drake` or `pydrake`. It may import only `hopper.types` and
-  `hopper.math3d`. The same holds for `src/hopper/estimation/`.
-  This keeps it portable to Rust or C later and prevents cheating with true state.
-  `tests/test_import_boundary.py` enforces it as an allowlist (stdlib, numpy, scipy and those two).
+- The flight-software packages live in `packages/` and never import `hopper` (the simulator),
+  `pydrake`, pandas or each other except through `hopper_core`: `hopper_control` and
+  `hopper_estimation` may import only the standard library, numpy (scipy for estimation) and
+  `hopper_core` (`types`, `math3d`). This keeps them portable to Rust or C later and prevents cheating
+  with true state. `tests/test_import_boundary.py` enforces it as an allowlist. They are composed only
+  in the root `hopper` package (`estimated_controller.py`, `scenario_glue.py`).
 - Use `uv` for all environment and dependency work (`uv add`, `uv sync`, `uv run`); never `pip` or a
   hand-made venv. See CONVENTIONS.md "Tooling".
 - SI units everywhere. No hidden unit conversions.

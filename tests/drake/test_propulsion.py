@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
+from hopper_core.types import make_state
 from pydrake.all import ConstantVectorSource, DiagramBuilder
 
 from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.propulsion import Engine
 from hopper.drake.sim import make_simulator
 from hopper.drake.state import set_state_vector, to_state_vector
-from hopper.types import make_state
 
 
 def _build(cfg, cmd, prop=None, thrust_frac=0.0, quat=None):

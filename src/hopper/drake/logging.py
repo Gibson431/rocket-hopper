@@ -1,6 +1,7 @@
 """Run log on the physics grid: reads the diagram's outputs into the S06 `Logger`."""
 
 import numpy as np
+from hopper_core.types import GIM, GIMR, PROP, THR
 
 from hopper.analysis.logger import Logger
 from hopper.config import VehicleConfig
@@ -9,7 +10,6 @@ from hopper.drake.state import to_state_vector
 from hopper.dynamics.mass_model import mass_properties
 from hopper.sim.events import Outcome
 from hopper.sim.result import config_hash
-from hopper.types import GIM, GIMR, PROP, THR
 
 
 class DrakeLogger:

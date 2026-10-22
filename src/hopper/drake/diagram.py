@@ -12,11 +12,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
+from hopper_control.interface import Controller, StateFeedbackController
 from pydrake.all import Diagram, DiagramBuilder, Meshcat, MeshcatVisualizer
 from pydrake.multibody.plant import MultibodyPlant
 
 from hopper.config import VehicleConfig
-from hopper.control.interface import Controller, StateFeedbackController
 from hopper.drake.aero import AeroLoads
 from hopper.drake.combiner import ForceCombiner
 from hopper.drake.controller_host import ControllerHost

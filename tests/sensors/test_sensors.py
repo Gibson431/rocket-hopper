@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
+from hopper_core.math3d import quat_from_axis_angle
+from hopper_core.types import Command, make_state
 
 from hopper.config import SensorsConfig
-from hopper.math3d import quat_from_axis_angle
 from hopper.sensors.suite import SensorSuite
-from hopper.types import Command, make_state
 
 G = 9.80665
 OFF = Command(0.0, np.zeros(2), 0.0)

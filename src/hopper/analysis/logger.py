@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from hopper_core.types import N_STATE, Command
 
 from hopper.sim.events import Outcome
-from hopper.types import N_STATE, Command
 
 STATE_COLUMNS = [
     *(f"pos_{a}" for a in "xyz"),

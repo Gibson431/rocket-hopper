@@ -9,12 +9,12 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import numpy as np
+from hopper_core.math3d import quat_conj, quat_error, quat_mul, quat_to_dcm
+from hopper_core.types import OMEGA, POS, QUAT, VEL, SensorData, make_state
 
 from hopper.config import VehicleConfig
-from hopper.math3d import quat_conj, quat_error, quat_mul, quat_to_dcm
 from hopper.scenario_glue import ekf_params_from_config
 from hopper.sensors.suite import SensorSuite
-from hopper.types import OMEGA, POS, QUAT, VEL, SensorData, make_state
 
 G = 9.80665
 DT = 0.0025  # sensor-sampling step: divides every sensor period (400, 50, 50, 10 Hz)
@@ -31,7 +31,7 @@ def _attitude(a_cmd: np.ndarray, yaw: float) -> np.ndarray:
     x = x - z * (x @ z)
     x /= np.linalg.norm(x)
     rot = np.column_stack([x, np.cross(z, x), z])
-    from hopper.math3d import dcm_to_quat
+    from hopper_core.math3d import dcm_to_quat
 
     return dcm_to_quat(rot)
 
@@ -138,7 +138,7 @@ def attitude_error(q_true: np.ndarray, q_est: np.ndarray) -> np.ndarray:
 def make_ekf(cfg: VehicleConfig, **overrides):
     from dataclasses import replace
 
-    from hopper.estimation.ekf import EKF
+    from hopper_estimation.ekf import EKF
 
     # The newest IMU sample is always exactly one grid step old at a call in this harness.
     params = replace(ekf_params_from_config(cfg), imu_delay=DT)
