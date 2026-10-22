@@ -4,34 +4,31 @@ Python 6-DOF simulator for developing a thrust-vector-controlled (TVC) rocket-ho
 The simulation runs on [Drake](https://drake.mit.edu/) (`pydrake`); the controller and estimator are
 plain Python that never import it.
 
+![Nominal hop in Meshcat](docs/media/hop_nominal.gif)
+
+*`configs/scenarios/hop_nominal.yaml`: climb to 10 m, hover, translate 3 m and land.*
+
 ## Layout
 
 uv workspace. The flight software is split into standalone packages under `packages/`; the root
 `hopper` package is the simulator and the only place they are composed.
 
-| Package | Import | Role |
-|---|---|---|
-| `packages/hopper-core` | `hopper_core` | shared `types` and `math3d` |
-| `packages/hopper-control` | `hopper_control` | attitude/position/mission controller |
-| `packages/hopper-estimation` | `hopper_estimation` | EKF and propellant estimator |
-| root | `hopper` | Drake simulation, sensors, scenarios, analysis |
+| Package                      | Import              | Role                                           |
+| ---------------------------- | ------------------- | ---------------------------------------------- |
+| `packages/hopper-core`       | `hopper_core`       | shared `types` and `math3d`                    |
+| `packages/hopper-control`    | `hopper_control`    | attitude/position/mission controller           |
+| `packages/hopper-estimation` | `hopper_estimation` | EKF and propellant estimator                   |
+| root                         | `hopper`            | Drake simulation, sensors, scenarios, analysis |
 
-## Install and test
+## Install
 
-```
-mise install        # provides uv, if missing
-uv sync
-uv run pytest                 # unit tests (fast)
-uv run pytest -m ""           # everything, including end-to-end simulation runs
-uv run ruff check . && uv run ruff format --check .
-```
+This project uses [mise](https://mise.jdx.dev/). If you don't want to (or can't) install mise, the python side of things can be controlled via [uv](https://docs.astral.sh/uv).
 
 ## Run
 
-```
-uv run python scripts/run_scenario.py configs/scenarios/hop_nominal.yaml [--seed S] [--dispersed]
-uv run python scripts/run_monte_carlo.py configs/scenarios/hop_dispersed.yaml -n 100 --workers 4
-uv run python scripts/plot_run.py LOG.parquet [--replay]     # plots and Meshcat replay
+```sh
+uv sync
+uv run scripts/run_scenario.py configs/scenarios/hop_nominal.yaml [--meshcat (for visualisation)]
 ```
 
 ## Development
