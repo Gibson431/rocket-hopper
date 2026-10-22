@@ -14,10 +14,10 @@ from dataclasses import replace
 from typing import Annotated, Literal
 
 import numpy as np
+from hopper_core.types import Command, SensorData
 from pydantic import BaseModel, ConfigDict, Field
 
 from hopper.config import VehicleConfig
-from hopper.types import Command, SensorData
 
 
 class Fault(BaseModel):

@@ -2,9 +2,8 @@
 
 import numpy as np
 import pytest
+from hopper_core.math3d import quat_error
 from scipy.stats import chi2
-
-from hopper.math3d import quat_error
 
 from .estimation_harness import Feeder, make_ekf
 

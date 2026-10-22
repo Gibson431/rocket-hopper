@@ -1,10 +1,10 @@
 """Barometric altitude: ISA pressure round trip, white noise and a random-walk bias."""
 
 import numpy as np
+from hopper_core.types import POS
 
 from hopper.config import BaroConfig
 from hopper.dynamics.environment import atmosphere, pressure_to_altitude
-from hopper.types import POS
 
 
 class Baro:

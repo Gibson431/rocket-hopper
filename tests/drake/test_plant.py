@@ -1,4 +1,5 @@
 import numpy as np
+from hopper_core.types import POS, PROP, QUAT, VEL, make_state
 from pydrake.all import DiagramBuilder
 
 from hopper.drake.mass import MassUpdater
@@ -6,7 +7,6 @@ from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
 from hopper.drake.state import set_state_vector, to_state_vector
 from hopper.dynamics.mass_model import mass_properties
-from hopper.types import POS, PROP, QUAT, VEL, make_state
 
 
 def _build(cfg):

@@ -2,8 +2,7 @@ import dataclasses
 
 import numpy as np
 import pytest
-
-from hopper import types as ht
+from hopper_core import types as ht
 
 
 def test_state_index_constants_match_conventions():

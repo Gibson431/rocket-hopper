@@ -1,16 +1,16 @@
 import numpy as np
 import pytest
+from hopper_control.attitude import AttitudeController, AttitudeGains
+from hopper_control.attitude_test_controller import AttitudeHoldController
+from hopper_control.interface import StateFeedbackController
+from hopper_core.math3d import quat_error, quat_from_axis_angle
+from hopper_core.types import make_state
 
 from hopper.config import VehicleConfig
-from hopper.control.attitude import AttitudeController, AttitudeGains
-from hopper.control.attitude_test_controller import AttitudeHoldController
-from hopper.control.interface import StateFeedbackController
 from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import quat_error, quat_from_axis_angle
 from hopper.scenario_glue import control_params_from_config
-from hopper.types import make_state
 
 IDENTITY = np.array([1.0, 0.0, 0.0, 0.0])
 ZERO3 = np.zeros(3)
@@ -277,7 +277,7 @@ def test_reset_clears_the_slew_limit_memory(ctrl, params):
 
 
 def test_hold_controller_uses_the_center_of_mass_for_the_estimated_mass(cfg, params, gains):
-    from hopper.types import StateEstimate
+    from hopper_core.types import StateEstimate
 
     mass = params.dry_mass + params.prop_mass_initial
     q = quat_from_axis_angle([1, 0, 0], -np.radians(2))

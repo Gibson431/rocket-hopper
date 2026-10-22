@@ -13,16 +13,16 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 import numpy as np
+from hopper_core.types import Command, SensorData, StateEstimate
 
-from hopper.control.attitude import AttitudeGains
-from hopper.control.params import ControlParams
-from hopper.control.position import (
+from hopper_control.attitude import AttitudeGains
+from hopper_control.params import ControlParams
+from hopper_control.position import (
     AltitudeGains,
     HorizontalGains,
     PositionController,
     Setpoint,
 )
-from hopper.types import Command, SensorData, StateEstimate
 
 
 class MissionState(Enum):

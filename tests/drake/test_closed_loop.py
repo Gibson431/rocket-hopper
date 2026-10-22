@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 import pytest
+from hopper_core.types import Command, make_state
 
 from hopper.analysis.logger import COLUMNS
 from hopper.config import load_vehicle
@@ -14,7 +15,6 @@ from hopper.dynamics.mass_model import mass_properties
 from hopper.scenario_glue import run_hop
 from hopper.sim.events import Outcome
 from hopper.sim.result import SimResult
-from hopper.types import Command, make_state
 
 HOVER_Z = 20.0  # CoM height: far from the ground for every short run below
 

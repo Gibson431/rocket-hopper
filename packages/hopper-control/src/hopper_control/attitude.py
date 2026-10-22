@@ -17,9 +17,9 @@ angle the gimbal cannot reach within a step. There is no integral term, hence no
 from dataclasses import dataclass, field
 
 import numpy as np
+from hopper_core.math3d import quat_error
 
-from hopper.control.params import ControlParams
-from hopper.math3d import quat_error
+from hopper_control.params import ControlParams
 
 
 @dataclass

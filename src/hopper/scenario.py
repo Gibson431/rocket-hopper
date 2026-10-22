@@ -12,16 +12,17 @@ from typing import Annotated, Literal
 
 import numpy as np
 import yaml
+from hopper_control.mission import MissionController, MissionParams
+from hopper_core.math3d import quat_from_euler_zyx
+from hopper_core.types import make_state
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, create_model
 from pydrake.all import Meshcat
 
 from hopper.config import VehicleConfig, load_vehicle
-from hopper.control.mission import MissionController, MissionParams
 from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment, Wind
 from hopper.dynamics.mass_model import mass_properties
 from hopper.estimated_controller import EstimatedController
-from hopper.math3d import quat_from_euler_zyx
 from hopper.scenario_glue import (
     HopSummary,
     control_params_from_config,
@@ -30,7 +31,6 @@ from hopper.scenario_glue import (
 )
 from hopper.sim.faults import AnyFault, Fault, GyroBias
 from hopper.sim.result import SimResult
-from hopper.types import make_state
 
 Vec3 = tuple[float, float, float]
 _SAG = 0.01  # m, legs start slightly compressed so the pad counts as ground contact from t = 0

@@ -7,6 +7,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "hopper-control",
+    "hopper-core",
+    "hopper-estimation",
     "drake>=1.58.0",
     "matplotlib>=3.11.2",
     "numpy>=2.5.4",
@@ -16,6 +19,14 @@ dependencies = [
     "pyyaml>=6.0.3",
     "scipy>=1.18.1",
 ]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+hopper-control = { workspace = true }
+hopper-core = { workspace = true }
+hopper-estimation = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]
@@ -36,7 +47,7 @@ extend-exclude = ["scripts", "docs", "skills"]
 select = ["E", "F", "I", "UP", "B", "N"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "packages/hopper-core/tests", "packages/hopper-control/tests"]
 # Default run is the unit set (usable as a pre-commit check); regression = any test that runs a simulation end to end. Full suite: `uv run pytest -m ""`; only slow: `-m regression`.
 addopts = '-m "not regression"'
 markers = ["regression: tests that run a simulation end to end (scenario, closed-loop, long trajectory, statistical batch); deselected by default"]

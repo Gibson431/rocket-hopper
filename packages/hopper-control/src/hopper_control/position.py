@@ -15,11 +15,11 @@ only absorbs unmodelled accelerations (drag, mass error) and is frozen when the 
 from dataclasses import dataclass, field
 
 import numpy as np
+from hopper_core.math3d import cross, dcm_to_quat, quat_rotate
+from hopper_core.types import Command, StateEstimate
 
-from hopper.control.attitude import AttitudeController, AttitudeGains
-from hopper.control.params import ControlParams
-from hopper.math3d import cross, dcm_to_quat, quat_rotate
-from hopper.types import Command, StateEstimate
+from hopper_control.attitude import AttitudeController, AttitudeGains
+from hopper_control.params import ControlParams
 
 G = 9.80665
 UP = np.array([0.0, 0.0, 1.0])

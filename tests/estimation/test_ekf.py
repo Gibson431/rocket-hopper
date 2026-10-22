@@ -4,9 +4,8 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-
-from hopper.math3d import quat_from_axis_angle, quat_mul, quat_to_dcm
-from hopper.types import StateEstimate
+from hopper_core.math3d import quat_from_axis_angle, quat_mul, quat_to_dcm
+from hopper_core.types import StateEstimate
 
 from .estimation_harness import Feeder, G, make_ekf, run
 
@@ -48,7 +47,7 @@ def test_alignment_recovers_a_tilted_start(cfg):
     f_b = quat_to_dcm(q).T @ np.array([0.0, 0.0, G])
     t = 0.0
     while not ekf.initialised:
-        from hopper.types import SensorData
+        from hopper_core.types import SensorData
 
         ekf.process(SensorData(t, np.zeros(3), f_b, None, None, None, None))
         t += 0.01

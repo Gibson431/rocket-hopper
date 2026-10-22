@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 import pytest
+from hopper_core.types import Command, make_state
 
 from hopper.analysis.logger import COLUMNS, Logger
 from hopper.sim.events import Outcome
-from hopper.types import Command, make_state
 
 STATE_COLS = [
     *(f"pos_{a}" for a in "xyz"),

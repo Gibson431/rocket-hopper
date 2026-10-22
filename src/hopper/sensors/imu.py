@@ -1,9 +1,9 @@
 """Gyro and accelerometer: white noise plus a random-walk bias, with saturation."""
 
 import numpy as np
+from hopper_core.types import OMEGA
 
 from hopper.config import ImuConfig
-from hopper.types import OMEGA
 
 
 class Imu:

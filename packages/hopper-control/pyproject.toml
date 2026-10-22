@@ -1,0 +1,19 @@
+[project]
+name = "hopper-control"
+version = "0.1.0"
+description = "Flight controller for the TVC rocket hopper (no simulator dependencies)"
+authors = [
+    { name = "Gibson431", email = "timmaxgibson@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = ["hopper-core", "numpy>=2.5.4"]
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+hopper-core = { workspace = true }
+
+[dependency-groups]
+dev = ["hypothesis>=6.170.1", "pytest>=9.1.1"]

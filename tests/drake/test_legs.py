@@ -1,5 +1,7 @@
 import numpy as np
 import pytest
+from hopper_core.math3d import quat_from_axis_angle, quat_to_dcm
+from hopper_core.types import make_state
 from pydrake.all import DiagramBuilder
 
 from hopper.drake.legs import ContactObserver, add_legs
@@ -7,8 +9,6 @@ from hopper.drake.plant import build_vehicle_plant
 from hopper.drake.sim import make_simulator
 from hopper.drake.state import set_state_vector
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import quat_from_axis_angle, quat_to_dcm
-from hopper.types import make_state
 
 G = 9.80665
 

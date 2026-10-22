@@ -8,6 +8,7 @@ ISA density use the CoM; its offset comes from the propellant mass.
 import math
 
 import numpy as np
+from hopper_core.math3d import cross, quat_to_dcm
 from pydrake.all import AbstractValue, ExternallyAppliedSpatialForce, LeafSystem, SpatialForce
 from pydrake.multibody.plant import MultibodyPlant
 
@@ -15,7 +16,6 @@ from hopper.config import VehicleConfig
 from hopper.drake.state import BODY_NAME
 from hopper.dynamics.environment import atmosphere
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import cross, quat_to_dcm
 
 
 class AeroLoads(LeafSystem):

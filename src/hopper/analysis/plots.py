@@ -6,9 +6,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from hopper_core.math3d import quat_to_euler_zyx
 from matplotlib.figure import Figure
-
-from hopper.math3d import quat_to_euler_zyx
 
 _XYZ = "xyz"
 _PHASE_COLORS = ("#cfe3f5", "#f5e6c8", "#d9efd2", "#f2d4d4", "#e3d6f0", "#d8e8e8")

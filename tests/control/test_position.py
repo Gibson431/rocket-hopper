@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
-
-from hopper.control.attitude import AttitudeGains
-from hopper.control.interface import StateFeedbackController
-from hopper.control.position import (
+from hopper_control.attitude import AttitudeGains
+from hopper_control.interface import StateFeedbackController
+from hopper_control.position import (
     AltitudeController,
     AltitudeGains,
     HorizontalController,
@@ -11,12 +10,13 @@ from hopper.control.position import (
     PositionController,
     Setpoint,
 )
+from hopper_core.math3d import quat_rotate
+from hopper_core.types import Command, StateEstimate, make_state
+
 from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import quat_rotate
 from hopper.scenario_glue import control_params_from_config
-from hopper.types import Command, StateEstimate, make_state
 
 G = 9.80665
 PROP_MASS = 10.0

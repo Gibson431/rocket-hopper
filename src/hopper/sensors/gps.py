@@ -1,9 +1,9 @@
 """GPS position and velocity: white noise, random dropouts and outage windows."""
 
 import numpy as np
+from hopper_core.types import POS, VEL
 
 from hopper.config import GpsConfig
-from hopper.types import POS, VEL
 
 
 class Gps:

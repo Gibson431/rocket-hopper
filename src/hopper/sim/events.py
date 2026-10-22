@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 import numpy as np
+from hopper_core.math3d import quat_to_dcm
+from hopper_core.types import OMEGA, POS, QUAT, VEL
 
 from hopper.config import VehicleConfig
-from hopper.math3d import quat_to_dcm
-from hopper.types import OMEGA, POS, QUAT, VEL
 
 
 @dataclass(frozen=True)

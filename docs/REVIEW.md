@@ -71,7 +71,7 @@ about it, and trust only what you observe in the repository and in command outpu
    survives, that is a finding: the tests do not pin that behaviour. Delete the copy afterwards.
 6. **Conventions and rules:** check against `docs/CONVENTIONS.md` and `docs/AGENT_START.md`: frames
    and units, quaternion convention, state layout, explicit RNG usage, the controller import boundary
-   (`hopper.control` and `hopper.estimation` must not import simulator modules), no global numpy RNG, and
+   (`hopper_control` and `hopper_estimation` must not import simulator modules), no global numpy RNG, and
    no hidden unit conversions. Check that any interface deviation was recorded under "Decisions" in
    `docs/PROGRESS.md` and in `docs/CONVENTIONS.md`.
 7. **Scope:** note any code that implements things belonging to other steps or that is not asked for.

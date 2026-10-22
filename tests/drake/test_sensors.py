@@ -2,15 +2,15 @@
 
 import numpy as np
 import pytest
+from hopper_control.interface import OpenLoopController
+from hopper_core.math3d import quat_error
+from hopper_core.types import Command, make_state
 
-from hopper.control.interface import OpenLoopController
 from hopper.drake.simulation import DrakeSimulation
 from hopper.dynamics.environment import Environment
 from hopper.dynamics.mass_model import mass_properties
-from hopper.math3d import quat_error
 from hopper.scenario_glue import run_hop
 from hopper.sim.events import Outcome
-from hopper.types import Command, make_state
 
 OFF = Command(0.0, np.zeros(2), 0.0)
 FIELDS = ("gyro", "accel", "baro_alt", "gps_pos", "gps_vel", "lidar_range")

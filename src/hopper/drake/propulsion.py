@@ -9,6 +9,7 @@ gimbal pivot, so Drake produces the torque about the CoM itself (Q2).
 import math
 
 import numpy as np
+from hopper_core.math3d import quat_to_dcm
 from pydrake.all import (
     AbstractValue,
     BasicVector,
@@ -21,7 +22,6 @@ from pydrake.multibody.plant import MultibodyPlant
 from hopper.config import VehicleConfig
 from hopper.drake.state import BODY_NAME
 from hopper.dynamics.environment import G0
-from hopper.math3d import quat_to_dcm
 
 # continuous state indices
 _PROP, _THR, _GX, _GY, _GXR, _GYR = range(6)
